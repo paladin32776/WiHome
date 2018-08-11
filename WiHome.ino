@@ -67,17 +67,17 @@ void loop()
       if (command.compareTo("on")==0)
       {
           Serial.println(F("\nTurning LED on"));
-          digitalWrite(LED_BUILTIN,LOW);
+          digitalWrite(PIN_OUTPUT,LOW);
       }
       if (command.compareTo("off")==0)
       {
           Serial.println(F("\nTurning LED off"));
-          digitalWrite(LED_BUILTIN,HIGH);
+          digitalWrite(PIN_OUTPUT,HIGH);
       }
       if (command.compareTo("toggle")==0)
       {
           Serial.println(F("\Toggling LED"));
-          digitalWrite(LED_BUILTIN,!digitalRead(LED_BUILTIN));
+          digitalWrite(PIN_OUTPUT,!digitalRead(PIN_OUTPUT));
       }
     }
   }
