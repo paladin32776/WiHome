@@ -1,63 +1,25 @@
 #include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
-
-// WiFi Settings 
-#define WLAN_SSID       "ExtremeG"
-#define WLAN_PASS       "rideldibixwpa2"
-
-// MQTT Server Settings 
-#define MQTT_SERVER      "cncmill.local"
-#define MQTT_SERVERPORT  1883                   // use 8883 for SSL
-#define MQTT_USERNAME    ""
-#define MQTT_KEY         ""
+#include "WiHome_Support.h"
+#include "WiHome_Config.h"
 
 // Setup Wifi and MQTT Clients
-
 // Create an ESP8266 WiFiClient object to connect to the MQTT server.
 WiFiClient client;
-
 // Setup the MQTT client class by passing in the WiFi client and MQTT server and login details.
 Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
 
-/****************************** Feeds ***************************************/
+/****************************** MQTT Feeds ***************************************/
+// MQTT topics: MDNS_CLIENT_NAME/.../...
 
 // Setup a feed called 'photocell' for publishing.
-// Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>
-Adafruit_MQTT_Publish status_feed = Adafruit_MQTT_Publish(&mqtt, "/led/status");
+Adafruit_MQTT_Publish status_feed = Adafruit_MQTT_Publish(&mqtt, MDNS_CLIENT_NAME "/led/status");
 
 // Setup a feed called 'onoff' for subscribing to changes.
-Adafruit_MQTT_Subscribe command_feed = Adafruit_MQTT_Subscribe(&mqtt, "/led/command");
+Adafruit_MQTT_Subscribe command_feed = Adafruit_MQTT_Subscribe(&mqtt, MDNS_CLIENT_NAME "/led/command");
 
-/*************************** Sketch Code ************************************/
-
-// Function to connect and reconnect as necessary to the MQTT server.
-// Should be called in the loop function and it will take care if connecting.
-void MQTT_connect() 
-{
-  int8_t ret;
-
-  // Stop if already connected.
-  if (mqtt.connected()) {
-    return;
-  }
-
-  Serial.print("Connecting to MQTT... ");
-
-  uint8_t retries = 3;
-  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-       Serial.println(mqtt.connectErrorString(ret));
-       Serial.println("Retrying MQTT connection in 5 seconds...");
-       mqtt.disconnect();
-       delay(5000);  // wait 5 seconds
-       retries--;
-       if (retries == 0) {
-         // basically die and wait for WDT to reset me
-         while (1);
-       }
-  }
-  Serial.println("MQTT Connected!");
-}
 
 void setup() 
 {
@@ -80,6 +42,14 @@ void setup()
   Serial.println("WiFi connected");
   Serial.println("IP address: "); Serial.println(WiFi.localIP());
 
+  if (!MDNS.begin(MDNS_CLIENT_NAME)) 
+  {
+    Serial.println("Error setting up MDNS responder!");
+  }
+  Serial.println("mDNS responder started");
+  MDNS.addService("esp", "tcp", 8080); // Announce esp tcp service on port 8080
+  
+
   pinMode(LED_BUILTIN, OUTPUT);
 
   // Setup MQTT subscription for onoff feed.
@@ -88,11 +58,12 @@ void setup()
 
 uint32_t x=0;
 
+
 void loop() 
 {
   // Ensure the connection to the MQTT server is alive 
   // (will make the first connection and automatically reconnect when disconnected)
-  MQTT_connect();
+  MQTT_connect(&mqtt);
 
   // this is our "wait for incoming subscription packets" busy subloop
   // try to spend your time here
@@ -105,20 +76,30 @@ void loop()
       String command = (char*)command_feed.lastread;
       Serial.print(F("Got: "));
       Serial.println(command);
-      
-      
+      switch (command.toInt())
+      {
+        case 1:
+          Serial.println(F("\nTurning LED on"));
+          digitalWrite(LED_BUILTIN,HIGH);
+          break;
+        case 0:
+          Serial.println(F("\nTurning LED off"));
+          digitalWrite(LED_BUILTIN,LOW);
+          break;
+      }
     }
   }
 
-  // Now we can publish stuff!
-  Serial.print(F("\nSending photocell val "));
-  Serial.print(x);
-  Serial.print("...");
-  if (! status_feed.publish(x++)) {
+  // Publish LED status:
+  uint32_t led_status = digitalRead(LED_BUILTIN);
+  Serial.print(F("\nSending LED status "));
+  Serial.print(led_status);
+  Serial.print(F("..."));
+  if (! status_feed.publish(led_status))
     Serial.println(F("Failed"));
-  } else {
+  else 
     Serial.println(F("OK!"));
-  }
+  
 
   // ping the server to keep the mqtt connection alive
   // NOT required if you are publishing once every KEEPALIVE seconds
