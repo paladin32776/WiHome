@@ -8,6 +8,7 @@ int NoBounceButtons::create(unsigned int pin)  // create a new button
 {
   if (Nbuttons<MAX_BUTTONS)
   {
+    pinMode(pin,INPUT_PULLUP);
     buttonpin[Nbuttons] = pin;    // pin to which button is connected
     lastbuttonState[pin] = LOW;   // the previous reading from the input pin
     lastbuttonTime[pin] = 0;      // the last time the output pin was toggled
@@ -44,11 +45,7 @@ void NoBounceButtons::check()
       {
         buttonState[button_id] = reading;
         if (buttonState[button_id] == LOW)
-        {
           buttonAction[button_id] = true;
-          Serial.println("Toggle button event.");
-        }
-
       }
     }
     lastbuttonState[button_id] = reading;

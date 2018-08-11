@@ -1,5 +1,31 @@
 #include "WiHome_Support.h"
 
+void Wifi_connect(char* ssid, char* passwd, char* mdns_client_name)
+{
+  // Connect to WiFi access point.
+  Serial.println(); Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, passwd);
+  while (WiFi.status() != WL_CONNECTED) 
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  Serial.println("WiFi connected");
+  Serial.println("IP address: "); Serial.println(WiFi.localIP());
+
+  // Setup MDNS responder:
+  if (!MDNS.begin(mdns_client_name)) 
+  {
+    Serial.println("Error setting up MDNS responder!");
+  }
+  Serial.println("mDNS responder started");
+  MDNS.addService("esp", "tcp", 8080); // Announce esp tcp service on port 8080
+}
+
+
 // Function to connect and reconnect as necessary to the MQTT server.
 // Should be called in the loop function and it will take care if connecting.
 void MQTT_connect(Adafruit_MQTT_Client* mqtt)

@@ -1,9 +1,10 @@
 #include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 #include "WiHome_Support.h"
 #include "WiHome_Config.h"
+#include "NoBounceButtons.h"
+
 
 // Setup Wifi and MQTT Clients
 // Create an ESP8266 WiFiClient object to connect to the MQTT server.
@@ -11,52 +12,36 @@ WiFiClient client;
 // Setup the MQTT client class by passing in the WiFi client and MQTT server and login details.
 Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
 
+// Setup button debouncing object:
+NoBounceButtons nbb;
+// and global variables to hold button IDs:
+int button1;
+
 /****************************** MQTT Feeds ***************************************/
 // MQTT topics: MDNS_CLIENT_NAME/.../...
 
 // Setup a feed called 'photocell' for publishing.
-Adafruit_MQTT_Publish status_feed = Adafruit_MQTT_Publish(&mqtt, MDNS_CLIENT_NAME "/led/status");
+Adafruit_MQTT_Publish button_feed = Adafruit_MQTT_Publish(&mqtt, MDNS_CLIENT_NAME "/button");
 
 // Setup a feed called 'onoff' for subscribing to changes.
-Adafruit_MQTT_Subscribe command_feed = Adafruit_MQTT_Subscribe(&mqtt, MDNS_CLIENT_NAME "/led/command");
+Adafruit_MQTT_Subscribe led_feed = Adafruit_MQTT_Subscribe(&mqtt, MDNS_CLIENT_NAME "/led");
 
 
 void setup() 
 {
   Serial.begin(115200);
   delay(10);
+  // Turn on Wifi and MDNS
+  Wifi_connect(WLAN_SSID, WLAN_PASS, MDNS_CLIENT_NAME);
+  // Setup MQTT subscription for command feed
+  mqtt.subscribe(&led_feed);
 
-  // Connect to WiFi access point.
-  Serial.println(); Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(WLAN_SSID);
+  // Configure LED pin:
+  pinMode(PIN_OUTPUT, OUTPUT);
 
-  WiFi.begin(WLAN_SSID, WLAN_PASS);
-  while (WiFi.status() != WL_CONNECTED) 
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println();
-
-  Serial.println("WiFi connected");
-  Serial.println("IP address: "); Serial.println(WiFi.localIP());
-
-  if (!MDNS.begin(MDNS_CLIENT_NAME)) 
-  {
-    Serial.println("Error setting up MDNS responder!");
-  }
-  Serial.println("mDNS responder started");
-  MDNS.addService("esp", "tcp", 8080); // Announce esp tcp service on port 8080
-  
-
-  pinMode(LED_BUILTIN, OUTPUT);
-
-  // Setup MQTT subscription for onoff feed.
-  mqtt.subscribe(&command_feed);
+  // Configure buttons:
+  button1 = nbb.create(PIN_INPUT);
 }
-
-uint32_t x=0;
 
 
 void loop() 
@@ -65,41 +50,49 @@ void loop()
   // (will make the first connection and automatically reconnect when disconnected)
   MQTT_connect(&mqtt);
 
+  // Check buttons:
+  nbb.check();
+  
   // this is our "wait for incoming subscription packets" busy subloop
   // try to spend your time here
 
   Adafruit_MQTT_Subscribe *subscription;
-  while ((subscription = mqtt.readSubscription(5000))) // Wait for 5s for a subscription message
+  while ((subscription = mqtt.readSubscription(10))) // Wait for 5s for a subscription message
   {
-    if (subscription == &command_feed) 
+    if (subscription == &led_feed) 
     {
-      String command = (char*)command_feed.lastread;
-      Serial.print(F("Got: "));
+      String command = (char*)led_feed.lastread;
+      Serial.print(F("Received: "));
       Serial.println(command);
-      switch (command.toInt())
+      if (command.compareTo("on")==0)
       {
-        case 1:
           Serial.println(F("\nTurning LED on"));
-          digitalWrite(LED_BUILTIN,HIGH);
-          break;
-        case 0:
-          Serial.println(F("\nTurning LED off"));
           digitalWrite(LED_BUILTIN,LOW);
-          break;
+      }
+      if (command.compareTo("off")==0)
+      {
+          Serial.println(F("\nTurning LED off"));
+          digitalWrite(LED_BUILTIN,HIGH);
+      }
+      if (command.compareTo("toggle")==0)
+      {
+          Serial.println(F("\Toggling LED"));
+          digitalWrite(LED_BUILTIN,!digitalRead(LED_BUILTIN));
       }
     }
   }
 
-  // Publish LED status:
-  uint32_t led_status = digitalRead(LED_BUILTIN);
-  Serial.print(F("\nSending LED status "));
-  Serial.print(led_status);
-  Serial.print(F("..."));
-  if (! status_feed.publish(led_status))
-    Serial.println(F("Failed"));
-  else 
-    Serial.println(F("OK!"));
-  
+  // Publish toggle event:
+  if (nbb.action(button1))
+  {
+    Serial.print(F("\nSending toggle signal "));
+    Serial.print(F("..."));
+    if (! button_feed.publish("toggle"))
+      Serial.println(F("Failed"));
+    else 
+      Serial.println(F("OK!"));
+    nbb.reset(button1);
+  }
 
   // ping the server to keep the mqtt connection alive
   // NOT required if you are publishing once every KEEPALIVE seconds
