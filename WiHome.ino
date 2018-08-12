@@ -16,6 +16,11 @@ Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, MQTT_SERVERPORT, MQTT_USERNAME, 
 NoBounceButtons nbb;
 // and global variables to hold button IDs:
 int button1;
+int button2;
+
+// Create objects for EnoughTimePassed class:
+EnoughTimePassed etp_MQTT_KeepAlive(MQTT_KEEPALIVE);
+EnoughTimePassed etp_softAP_mode(600000);
 
 /****************************** MQTT Feeds ***************************************/
 // MQTT topics: MDNS_CLIENT_NAME/.../...
@@ -26,6 +31,8 @@ Adafruit_MQTT_Publish button_feed = Adafruit_MQTT_Publish(&mqtt, MDNS_CLIENT_NAM
 // Setup a feed called 'onoff' for subscribing to changes.
 Adafruit_MQTT_Subscribe led_feed = Adafruit_MQTT_Subscribe(&mqtt, MDNS_CLIENT_NAME "/led");
 
+// Global variable to indicate soft AP mode:
+bool is_softAP = false;
 
 void setup() 
 {
@@ -39,12 +46,14 @@ void setup()
   // Configure LED pin:
   pinMode(PIN_OUTPUT, OUTPUT);
 
-  // Configure buttons:
+  // Configure main button:
   button1 = nbb.create(PIN_INPUT);
+  button2 = nbb.create(SOFT_AP_BUTTON);
+
 }
 
 
-void loop() 
+void loop_normal() 
 {
   // Ensure the connection to the MQTT server is alive 
   // (will make the first connection and automatically reconnect when disconnected)
@@ -94,13 +103,34 @@ void loop()
     nbb.reset(button1);
   }
 
+  if (nbb.action(button2))
+  {
+    Serial.println("Going into SoftAP mode ...");
+    is_softAP = true;
+    nbb.reset(button2);
+  }
+  
   // ping the server to keep the mqtt connection alive
   // NOT required if you are publishing once every KEEPALIVE seconds
-  /*
-  if(! mqtt.ping()) {
-    mqtt.disconnect();
-  }
-  */
+  if (etp_MQTT_KeepAlive.enough_time())
+    if(! mqtt.ping()) 
+      mqtt.disconnect();
+}
+
+
+void loop_softAP()
+{
+  if (etp_softAP_mode.enough_time())
+    Wifi_softAPmode("WiHome_Config_AP");
+}
+
+
+void loop()
+{
+  if (is_softAP)
+    loop_softAP();
+  else
+    loop_normal();
 }
 
 

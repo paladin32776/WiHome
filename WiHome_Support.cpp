@@ -57,3 +57,58 @@ void MQTT_connect(Adafruit_MQTT_Client* mqtt)
   Serial.println("MQTT Connected!");
 }
 
+
+void Wifi_softAPmode(char* ssid)
+{
+  
+  if (WiFi.status() == WL_CONNECTED) 
+  {
+    Serial.println("Stopping infrastructure mode.");
+    WiFi.disconnect();
+  }
+    
+  Serial.print("Setting soft-AP ... ");
+  boolean result = WiFi.softAP(ssid);
+  if(result == true)
+  {
+    Serial.println("Ready");
+  }
+  else
+  {
+    Serial.println("Failed!");
+  }
+  
+}
+
+
+// Class EnoughTimePassed - Methods
+EnoughTimePassed::EnoughTimePassed(unsigned long desired_intervall) // setup object with desired intervall
+{
+  intervall = desired_intervall;
+  last_time = 0;
+  once_called = false;  
+}
+
+bool EnoughTimePassed::enough_time()      // create a new button
+{
+  unsigned long t = millis();
+  if ( (t-last_time>intervall)  || (once_called==false) )
+    {
+      last_time = t;
+      once_called = true;
+      return true;
+    }
+  return false;
+}
+
+void EnoughTimePassed::event()             // manually tell that an event has happened just now
+{
+  last_time = millis();
+  once_called = true;
+}
+
+void EnoughTimePassed::change_intervall(unsigned long desired_intervall)
+{
+  intervall = desired_intervall;
+}
+
