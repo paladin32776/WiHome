@@ -1,4 +1,5 @@
 #include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 #include "WiHome_Support.h"
@@ -12,6 +13,9 @@ WiFiClient client;
 // Setup the MQTT client class by passing in the WiFi client and MQTT server and login details.
 Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
 
+// Web server:
+ConfigWebServer* cws;
+
 // Setup button debouncing object:
 NoBounceButtons nbb;
 // and global variables to hold button IDs:
@@ -21,6 +25,7 @@ int button2;
 // Create objects for EnoughTimePassed class:
 EnoughTimePassed etp_MQTT_KeepAlive(MQTT_KEEPALIVE);
 EnoughTimePassed etp_softAP_mode(600000);
+EnoughTimePassed etp_led_blink(500);
 
 /****************************** MQTT Feeds ***************************************/
 // MQTT topics: MDNS_CLIENT_NAME/.../...
@@ -34,22 +39,23 @@ Adafruit_MQTT_Subscribe led_feed = Adafruit_MQTT_Subscribe(&mqtt, MDNS_CLIENT_NA
 // Global variable to indicate soft AP mode:
 bool is_softAP = false;
 
+
 void setup() 
 {
   Serial.begin(115200);
   delay(10);
+  
   // Turn on Wifi and MDNS
   Wifi_connect(WLAN_SSID, WLAN_PASS, MDNS_CLIENT_NAME);
   // Setup MQTT subscription for command feed
   mqtt.subscribe(&led_feed);
-
+  
   // Configure LED pin:
   pinMode(PIN_OUTPUT, OUTPUT);
 
   // Configure main button:
   button1 = nbb.create(PIN_INPUT);
   button2 = nbb.create(SOFT_AP_BUTTON);
-
 }
 
 
@@ -59,12 +65,12 @@ void loop_normal()
   // (will make the first connection and automatically reconnect when disconnected)
   MQTT_connect(&mqtt);
 
+  //cws.handleClient();
+  
   // Check buttons:
   nbb.check();
   
-  // this is our "wait for incoming subscription packets" busy subloop
-  // try to spend your time here
-
+  // Check subscriptions:
   Adafruit_MQTT_Subscribe *subscription;
   while ((subscription = mqtt.readSubscription(10))) // Wait for 5s for a subscription message
   {
@@ -91,7 +97,7 @@ void loop_normal()
     }
   }
 
-  // Publish toggle event:
+  // Publish if required:
   if (nbb.action(button1))
   {
     Serial.print(F("\nSending toggle signal "));
@@ -121,7 +127,23 @@ void loop_normal()
 void loop_softAP()
 {
   if (etp_softAP_mode.enough_time())
-    Wifi_softAPmode("WiHome_Config_AP");
+  {
+    Wifi_softAPmode("WiHome_Config_AP"); 
+    cws = new ConfigWebServer(80);
+  }
+  // Blink led in Soft AP mode
+  if (etp_led_blink.enough_time())
+    digitalWrite(LED_BUILTIN,!digitalRead(LED_BUILTIN));
+  // Handle webserver and dnsserver events
+  cws->handleClient();
+  // Check buttons
+  nbb.check();
+  if (nbb.action(button2))
+  {
+    Serial.println("Going back to Infrastructure mode ...");
+    is_softAP = false;
+    nbb.reset(button2);
+  }
 }
 
 

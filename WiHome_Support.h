@@ -1,16 +1,43 @@
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 #include <ESP8266mDNS.h>
+#include <ESP8266WebServer.h>
+#include <DNSServer.h>
+#include "WiHome_HTML.h"
+#include <pgmspace.h>
+#include <EEPROM.h>
+#include "WiHome_Config.h"
+
+#define DEBUG_ESP_DNS
+#define DEBUG_ESP_PORT Serial
 
 // Function to connect to WiFi and mDNS
 void Wifi_connect(char* ssid, char* passwd, char* mdns_client_name);
+
 
 // Function to connect and reconnect as necessary to the MQTT server.
 // Should be called in the loop function and it will take care if connecting.
 void MQTT_connect(Adafruit_MQTT_Client* mqtt);
 
+
 // Function to create soft-AP
 void Wifi_softAPmode(char* ssid);
+
+
+// Web server class
+class ConfigWebServer
+{
+  private:
+    ESP8266WebServer* webserver;
+    const byte DNS_PORT = 53;
+    DNSServer* dnsServer;
+  public:
+     ConfigWebServer(int port);
+     void handleRoot(); 
+     void handleNotFound();
+     void handleClient();
+};
+
 
 // Class to simplify checking if enough time has been passed since last event
 class EnoughTimePassed
@@ -26,3 +53,15 @@ class EnoughTimePassed
     void change_intervall(unsigned long desired_intervall);
 };
 
+
+class UserData
+{
+  public:
+    String wlan_ssid = WLAN_SSID;
+    String wlan_pass = WLAN_PASS;
+    String mdns_client_name = MDNS_CLIENT_NAME;
+    String mqtt_server = MQTT_SERVER;
+    UserData();
+    void load();
+    void save();
+};

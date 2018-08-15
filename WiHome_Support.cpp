@@ -60,24 +60,69 @@ void MQTT_connect(Adafruit_MQTT_Client* mqtt)
 
 void Wifi_softAPmode(char* ssid)
 {
-  
+  // Disconnect infrastructure based Wifi if connected
   if (WiFi.status() == WL_CONNECTED) 
   {
     Serial.println("Stopping infrastructure mode.");
     WiFi.disconnect();
   }
-    
+  // Setup Soft AP  
+  IPAddress apIP(192, 168, 4, 1);
+  IPAddress netMsk(255, 255, 255, 0);
   Serial.print("Setting soft-AP ... ");
+  WiFi.mode(WIFI_AP);
+  WiFi.softAPConfig(apIP, apIP, netMsk);
   boolean result = WiFi.softAP(ssid);
   if(result == true)
-  {
     Serial.println("Ready");
-  }
   else
-  {
     Serial.println("Failed!");
+}
+
+
+ConfigWebServer::ConfigWebServer(int port)
+{
+  // Setup the DNS server redirecting all the domains to the apIP
+  IPAddress apIP(192, 168, 4, 1);
+  dnsServer = new DNSServer();
+  dnsServer->start(DNS_PORT, "*", apIP);
+  webserver = new ESP8266WebServer(port);
+  webserver->on("/", std::bind(&ConfigWebServer::handleRoot, this));
+  webserver->onNotFound(std::bind(&ConfigWebServer::handleRoot, this));
+//  webserver->onNotFound(std::bind(&ConfigWebServer::handleNotFound, this));
+  webserver->begin();
+  Serial.println("HTTP server started");
+}
+
+
+void ConfigWebServer::handleRoot() 
+{
+  webserver->send(200, "text/html", html_config_form);
+}
+
+
+void ConfigWebServer::handleNotFound()
+{
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += webserver->uri();
+  message += "\nMethod: ";
+  message += (webserver->method() == HTTP_GET)?"GET":"POST";
+  message += "\nArguments: ";
+  message += webserver->args();
+  message += "\n";
+  for (uint8_t i=0; i<webserver->args(); i++)
+  {
+    message += " " + webserver->argName(i) + ": " + webserver->arg(i) + "\n";
   }
-  
+  webserver->send(404, "text/plain", message);
+}
+
+
+void ConfigWebServer::handleClient()
+{
+  dnsServer->processNextRequest();
+  webserver->handleClient();
 }
 
 
@@ -110,5 +155,17 @@ void EnoughTimePassed::event()             // manually tell that an event has ha
 void EnoughTimePassed::change_intervall(unsigned long desired_intervall)
 {
   intervall = desired_intervall;
+}
+
+
+UserData::UserData()
+{}
+
+void UserData::load()
+{
+}
+
+void UserData::save()
+{
 }
 
