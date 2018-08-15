@@ -1,12 +1,12 @@
 // WiFi Settings 
-#define WLAN_SSID       "ExtremeG"
-#define WLAN_PASS       "rideldibixwpa2"
+#define WLAN_SSID       ""
+#define WLAN_PASS       ""
 
 // MDSN Settings
-#define MDNS_CLIENT_NAME "wihome2"
+#define MDNS_CLIENT_NAME ""
 
 // MQTT Server Settings 
-#define MQTT_SERVER      "cncmill.local"
+#define MQTT_SERVER      ""
 #define MQTT_SERVERPORT  1883                   // use 8883 for SSL
 #define MQTT_USERNAME    ""
 #define MQTT_KEY         ""
