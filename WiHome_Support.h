@@ -35,6 +35,7 @@ class ConfigWebServer
      ConfigWebServer(int port);
      void handleRoot(); 
      void handleNotFound();
+     void handleSaveAndRestart();
      void handleClient();
 };
 
@@ -57,10 +58,11 @@ class EnoughTimePassed
 class UserData
 {
   public:
-    String wlan_ssid = WLAN_SSID;
-    String wlan_pass = WLAN_PASS;
-    String mdns_client_name = MDNS_CLIENT_NAME;
-    String mqtt_server = MQTT_SERVER;
+    byte ud_id = 0;
+    char wlan_ssid[32];
+    char wlan_pass[32];
+    char mdns_client_name[32];
+    char mqtt_server[32];
     UserData();
     void load();
     void save();

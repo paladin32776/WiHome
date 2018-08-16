@@ -89,7 +89,7 @@ ConfigWebServer::ConfigWebServer(int port)
   webserver = new ESP8266WebServer(port);
   webserver->on("/", std::bind(&ConfigWebServer::handleRoot, this));
   webserver->onNotFound(std::bind(&ConfigWebServer::handleRoot, this));
-//  webserver->onNotFound(std::bind(&ConfigWebServer::handleNotFound, this));
+  webserver->on("/save_and_restart.php", std::bind(&ConfigWebServer::handleSaveAndRestart, this));
   webserver->begin();
   Serial.println("HTTP server started");
 }
@@ -116,6 +116,24 @@ void ConfigWebServer::handleNotFound()
     message += " " + webserver->argName(i) + ": " + webserver->arg(i) + "\n";
   }
   webserver->send(404, "text/plain", message);
+}
+
+
+void ConfigWebServer::handleSaveAndRestart() 
+{
+  String message = "Save and Restart\n\n";
+  message += "URI: ";
+  message += webserver->uri();
+  message += "\nMethod: ";
+  message += (webserver->method() == HTTP_GET)?"GET":"POST";
+  message += "\nArguments: ";
+  message += webserver->args();
+  message += "\n";
+  for (uint8_t i=0; i<webserver->args(); i++)
+  {
+    message += " " + webserver->argName(i) + ": " + webserver->arg(i) + "\n";
+  }
+  webserver->send(200, "text/plain", message);
 }
 
 
@@ -163,9 +181,22 @@ UserData::UserData()
 
 void UserData::load()
 {
+  EEPROM.get(EEPROM_UserData, ud_id);
+  if (ud_id != EEPROM_ud_id)
+    return;
+  EEPROM.get(EEPROM_UserData+1,wlan_ssid);
+  EEPROM.get(EEPROM_UserData+33,wlan_ssid);
+  EEPROM.get(EEPROM_UserData+65,mdns_client_name);
+  EEPROM.get(EEPROM_UserData+97,mqtt_server);
 }
 
 void UserData::save()
 {
+  EEPROM.put(EEPROM_UserData+1,wlan_ssid);
+  EEPROM.put(EEPROM_UserData+33,wlan_ssid);
+  EEPROM.put(EEPROM_UserData+65,mdns_client_name);
+  EEPROM.put(EEPROM_UserData+97,mqtt_server);
+  ud_id = EEPROM_ud_id;
+  EEPROM.put(EEPROM_UserData, ud_id);
 }
 
