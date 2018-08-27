@@ -64,6 +64,9 @@ class UserData
     char mdns_client_name[32];
     char mqtt_server[32];
     UserData();
-    void load();
+    bool load();
     void save();
 };
+
+// UserData:
+UserData ud();

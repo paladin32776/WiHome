@@ -132,6 +132,12 @@ void ConfigWebServer::handleSaveAndRestart()
   for (uint8_t i=0; i<webserver->args(); i++)
   {
     message += " " + webserver->argName(i) + ": " + webserver->arg(i) + "\n";
+    if ((webserver->argName(i)).compareTo("ssid")==0)
+    {
+      Serial.print("ssid caught");
+      //(webserver->argName(i)).toCharArray(ud.wlan_ssid, 32);
+      Serial.print("copied.");
+    }
   }
   webserver->send(200, "text/plain", message);
 }
@@ -179,15 +185,16 @@ void EnoughTimePassed::change_intervall(unsigned long desired_intervall)
 UserData::UserData()
 {}
 
-void UserData::load()
+bool UserData::load()
 {
   EEPROM.get(EEPROM_UserData, ud_id);
   if (ud_id != EEPROM_ud_id)
-    return;
+    return false;
   EEPROM.get(EEPROM_UserData+1,wlan_ssid);
   EEPROM.get(EEPROM_UserData+33,wlan_ssid);
   EEPROM.get(EEPROM_UserData+65,mdns_client_name);
   EEPROM.get(EEPROM_UserData+97,mqtt_server);
+  return true;
 }
 
 void UserData::save()

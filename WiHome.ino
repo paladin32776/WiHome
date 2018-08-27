@@ -15,7 +15,7 @@ Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, MQTT_SERVERPORT, MQTT_USERNAME, 
 
 // Web server:
 ConfigWebServer* cws;
-
+ 
 // Setup button debouncing object:
 NoBounceButtons nbb;
 // and global variables to hold button IDs:
@@ -30,11 +30,12 @@ EnoughTimePassed etp_led_blink(500);
 /****************************** MQTT Feeds ***************************************/
 // MQTT topics: MDNS_CLIENT_NAME/.../...
 
-// Setup a feed called 'photocell' for publishing.
+// Setup a feeds for publishing.
 Adafruit_MQTT_Publish button_feed = Adafruit_MQTT_Publish(&mqtt, MDNS_CLIENT_NAME "/button");
 
-// Setup a feed called 'onoff' for subscribing to changes.
+// Setup a feeds for subscribing.
 Adafruit_MQTT_Subscribe led_feed = Adafruit_MQTT_Subscribe(&mqtt, MDNS_CLIENT_NAME "/led");
+Adafruit_MQTT_Subscribe config_feed = Adafruit_MQTT_Subscribe(&mqtt, MDNS_CLIENT_NAME "/config");
 
 // Global variable to indicate soft AP mode:
 bool is_softAP = false;
@@ -49,6 +50,7 @@ void setup()
   Wifi_connect(WLAN_SSID, WLAN_PASS, MDNS_CLIENT_NAME);
   // Setup MQTT subscription for command feed
   mqtt.subscribe(&led_feed);
+  mqtt.subscribe(&config_feed);
   
   // Configure LED pin:
   pinMode(PIN_OUTPUT, OUTPUT);
@@ -72,7 +74,7 @@ void loop_normal()
   
   // Check subscriptions:
   Adafruit_MQTT_Subscribe *subscription;
-  while ((subscription = mqtt.readSubscription(10))) // Wait for 5s for a subscription message
+  while ((subscription = mqtt.readSubscription(10))) // Wait for 10ms for a subscription message
   {
     if (subscription == &led_feed) 
     {
@@ -93,6 +95,20 @@ void loop_normal()
       {
           Serial.println(F("\Toggling LED"));
           digitalWrite(PIN_OUTPUT,!digitalRead(PIN_OUTPUT));
+      }
+    }
+    if (subscription == &config_feed) 
+    {
+      String command = (char*)led_feed.lastread;
+      Serial.print(F("Received: "));
+      Serial.println(command);
+      if (command.compareTo("direct")==0)
+      {
+          Serial.println(F("\nConfiguring for direct button to led connection"));
+      }
+      if (command.compareTo("indirect")==0)
+      {
+          Serial.println(F("\nConfiguring for indirect button to ledelay connection"));
       }
     }
   }
@@ -126,6 +142,7 @@ void loop_normal()
 
 void loop_softAP()
 {
+  // TODO: NEED TO PREVENT DOUBLE START OF cws .....!!!
   if (etp_softAP_mode.enough_time())
   {
     Wifi_softAPmode("WiHome_Config_AP"); 
@@ -136,13 +153,14 @@ void loop_softAP()
     digitalWrite(LED_BUILTIN,!digitalRead(LED_BUILTIN));
   // Handle webserver and dnsserver events
   cws->handleClient();
-  // Check buttons
+  // Check buttonsß
   nbb.check();
   if (nbb.action(button2))
   {
     Serial.println("Going back to Infrastructure mode ...");
     is_softAP = false;
     nbb.reset(button2);
+    setup();
   }
 }
 
