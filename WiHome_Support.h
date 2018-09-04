@@ -7,12 +7,13 @@
 #include <pgmspace.h>
 #include <EEPROM.h>
 #include "WiHome_Config.h"
+#include "NoBounceButtons.h"
 
 #define DEBUG_ESP_DNS
 #define DEBUG_ESP_PORT Serial
 
 // Function to connect to WiFi and mDNS
-void Wifi_connect(char* ssid, char* passwd, char* mdns_client_name);
+bool Wifi_connect(char* ssid, char* passwd, char* mdns_client_name, NoBounceButtons* nbb, int button);
 
 
 // Function to connect and reconnect as necessary to the MQTT server.
@@ -23,6 +24,27 @@ void MQTT_connect(Adafruit_MQTT_Client* mqtt);
 // Function to create soft-AP
 void Wifi_softAPmode(char* ssid);
 
+Adafruit_MQTT_Publish* Adafruit_MQTT_Publish_3A(Adafruit_MQTT_Client* mqtt, char* client_name, const char* topic_name);
+Adafruit_MQTT_Subscribe* Adafruit_MQTT_Subscribe_3A(Adafruit_MQTT_Client* mqtt, char* client_name, const char* topic_name);
+
+
+class UserData
+{
+  private:
+    void CharArrayToEEPROM(char* ps, unsigned int offset, unsigned int bytes);
+    void CharArrayFromEEPROM(char* ps, unsigned int offset, unsigned int bytes);
+  
+  public:
+    byte ud_id = 0;
+    char wlan_ssid[32];
+    char wlan_pass[32];
+    char mqtt_broker[32];
+    char mdns_client_name[32];
+    UserData();
+    bool load();
+    void save();
+};
+
 
 // Web server class
 class ConfigWebServer
@@ -31,8 +53,9 @@ class ConfigWebServer
     ESP8266WebServer* webserver;
     const byte DNS_PORT = 53;
     DNSServer* dnsServer;
+    UserData* userdata;
   public:
-     ConfigWebServer(int port);
+     ConfigWebServer(int port, UserData* pud);
      void handleRoot(); 
      void handleNotFound();
      void handleSaveAndRestart();
@@ -55,18 +78,5 @@ class EnoughTimePassed
 };
 
 
-class UserData
-{
-  public:
-    byte ud_id = 0;
-    char wlan_ssid[32];
-    char wlan_pass[32];
-    char mdns_client_name[32];
-    char mqtt_server[32];
-    UserData();
-    bool load();
-    void save();
-};
 
-// UserData:
-UserData ud();
+

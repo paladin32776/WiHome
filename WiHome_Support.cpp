@@ -1,28 +1,41 @@
 #include "WiHome_Support.h"
 
-void Wifi_connect(char* ssid, char* passwd, char* mdns_client_name)
+bool Wifi_connect(char* ssid, char* passwd, char* mdns_client_name, NoBounceButtons* nbb, int button)
 {
   // Connect to WiFi access point.
   Serial.println(); Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
+  if (strlen(ssid)==0)
+    return false;
   WiFi.begin(ssid, passwd);
   while (WiFi.status() != WL_CONNECTED) 
   {
-    delay(500);
-    Serial.print(".");
+    delay(1);
+    nbb->check();
+    if (nbb->action(button))
+    {
+      nbb->reset(button);
+      return false;
+    }
   }
-  Serial.println();
-  Serial.println("WiFi connected");
-  Serial.println("IP address: "); Serial.println(WiFi.localIP());
-
-  // Setup MDNS responder:
-  if (!MDNS.begin(mdns_client_name)) 
+  if (WiFi.status() == WL_CONNECTED)
   {
-    Serial.println("Error setting up MDNS responder!");
+    Serial.println();
+    Serial.println("WiFi connected");
+    Serial.println("IP address: "); Serial.println(WiFi.localIP());
+  
+    // Setup MDNS responder:
+    if (!MDNS.begin(mdns_client_name)) 
+    {
+      Serial.println("Error setting up MDNS responder!");
+    }
+    Serial.println("mDNS responder started");
+    MDNS.addService("esp", "tcp", 8080); // Announce esp tcp service on port 8080
+    return true;
   }
-  Serial.println("mDNS responder started");
-  MDNS.addService("esp", "tcp", 8080); // Announce esp tcp service on port 8080
+  else
+    return false;
 }
 
 
@@ -80,8 +93,27 @@ void Wifi_softAPmode(char* ssid)
 }
 
 
-ConfigWebServer::ConfigWebServer(int port)
+Adafruit_MQTT_Publish* Adafruit_MQTT_Publish_3A(Adafruit_MQTT_Client* mqtt, char* client_name, const char* topic_name)
 {
+  char buf[64];
+  strcpy(buf,client_name);
+  strcat(buf,topic_name);
+  return new Adafruit_MQTT_Publish(mqtt,buf);
+}
+
+
+Adafruit_MQTT_Subscribe* Adafruit_MQTT_Subscribe_3A(Adafruit_MQTT_Client* mqtt, char* client_name, const char* topic_name)
+{
+  char buf[64];
+  strcpy(buf,client_name);
+  strcat(buf,topic_name);
+  return new Adafruit_MQTT_Subscribe(mqtt,buf);
+}
+
+
+ConfigWebServer::ConfigWebServer(int port, UserData* pud)
+{
+  userdata = pud;
   // Setup the DNS server redirecting all the domains to the apIP
   IPAddress apIP(192, 168, 4, 1);
   dnsServer = new DNSServer();
@@ -97,7 +129,17 @@ ConfigWebServer::ConfigWebServer(int port)
 
 void ConfigWebServer::handleRoot() 
 {
-  webserver->send(200, "text/html", html_config_form);
+  userdata->load();
+  String html = html_config_form1;
+  html += userdata->wlan_ssid;
+  html += html_config_form2;
+  html += userdata->wlan_pass;
+  html += html_config_form3;
+  html += userdata->mqtt_broker;
+  html += html_config_form4;
+  html += userdata->mdns_client_name;
+  html += html_config_form5;
+  webserver->send(200, "text/html", html);
 }
 
 
@@ -121,6 +163,7 @@ void ConfigWebServer::handleNotFound()
 
 void ConfigWebServer::handleSaveAndRestart() 
 {
+  char buf[32];
   String message = "Save and Restart\n\n";
   message += "URI: ";
   message += webserver->uri();
@@ -132,13 +175,24 @@ void ConfigWebServer::handleSaveAndRestart()
   for (uint8_t i=0; i<webserver->args(); i++)
   {
     message += " " + webserver->argName(i) + ": " + webserver->arg(i) + "\n";
-    if ((webserver->argName(i)).compareTo("ssid")==0)
-    {
-      Serial.print("ssid caught");
-      //(webserver->argName(i)).toCharArray(ud.wlan_ssid, 32);
-      Serial.print("copied.");
-    }
+    if ((webserver->argName(i)).compareTo("wlan_ssid")==0)
+      strcpy(userdata->wlan_ssid, (webserver->arg(i)).c_str());
+    if ((webserver->argName(i)).compareTo("wlan_pass")==0)
+      strcpy(userdata->wlan_pass, (webserver->arg(i)).c_str());
+    if ((webserver->argName(i)).compareTo("mqtt_broker")==0)
+      strcpy(userdata->mqtt_broker, (webserver->arg(i)).c_str());   
+    if ((webserver->argName(i)).compareTo("mdns_client_name")==0)
+      strcpy(userdata->mdns_client_name, (webserver->arg(i)).c_str());
   }
+  Serial.println("--- Data to be saved begin ---");
+  Serial.println(userdata->wlan_ssid);
+  Serial.println(userdata->wlan_pass);
+  Serial.println(userdata->mqtt_broker);
+  Serial.println(userdata->mdns_client_name);
+  Serial.println("--- Data to be saved end ---");
+  userdata->save();
+  message += "Userdata saved to EEPROM.\n";
+  Serial.print("Userdata saved to EEPROM.");
   webserver->send(200, "text/plain", message);
 }
 
@@ -183,27 +237,53 @@ void EnoughTimePassed::change_intervall(unsigned long desired_intervall)
 
 
 UserData::UserData()
-{}
+{
+}
 
 bool UserData::load()
 {
+  EEPROM.begin(129);
+  strcpy(wlan_ssid, "");
+  strcpy(wlan_pass, "");
+  strcpy(mqtt_broker, "");
+  strcpy(mdns_client_name, "");
   EEPROM.get(EEPROM_UserData, ud_id);
   if (ud_id != EEPROM_ud_id)
     return false;
   EEPROM.get(EEPROM_UserData+1,wlan_ssid);
-  EEPROM.get(EEPROM_UserData+33,wlan_ssid);
-  EEPROM.get(EEPROM_UserData+65,mdns_client_name);
-  EEPROM.get(EEPROM_UserData+97,mqtt_server);
+  EEPROM.get(EEPROM_UserData+33,wlan_pass);
+  EEPROM.get(EEPROM_UserData+65,mqtt_broker);
+  EEPROM.get(EEPROM_UserData+97,mdns_client_name);
+  EEPROM.end();
   return true;
 }
 
 void UserData::save()
 {
-  EEPROM.put(EEPROM_UserData+1,wlan_ssid);
-  EEPROM.put(EEPROM_UserData+33,wlan_ssid);
-  EEPROM.put(EEPROM_UserData+65,mdns_client_name);
-  EEPROM.put(EEPROM_UserData+97,mqtt_server);
+  EEPROM.begin(129);
+  CharArrayToEEPROM(wlan_ssid, 1, 32);
+  CharArrayToEEPROM(wlan_pass, 33, 32);
+  CharArrayToEEPROM(mqtt_broker, 65, 32);
+  CharArrayToEEPROM(mdns_client_name, 97, 32);
   ud_id = EEPROM_ud_id;
-  EEPROM.put(EEPROM_UserData, ud_id);
+  EEPROM.write(EEPROM_UserData, ud_id);
+  EEPROM.end();
+  delay(100);
 }
+
+void UserData::CharArrayToEEPROM(char* ps, unsigned int offset, unsigned int bytes)
+{
+  for (unsigned int a=0; a<bytes; a++)
+    EEPROM.write(a+offset, *(ps+a));
+}
+
+void UserData::CharArrayFromEEPROM(char* ps, unsigned int offset, unsigned int bytes)
+{
+  for (unsigned int a=0; a<bytes; a++)
+    *(ps+a) = EEPROM.read(a+offset);
+}
+
+
+
+
 

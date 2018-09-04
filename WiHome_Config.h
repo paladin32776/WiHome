@@ -1,8 +1,10 @@
 // WiFi Settings 
 
 // MDSN Settings
+#define MDNS_CLIENT_NAME "wihome1"
 
 // MQTT Server Settings 
+#define MQTT_SERVER      "raspi2.local"
 #define MQTT_SERVERPORT  1883                   // use 8883 for SSL
 #define MQTT_USERNAME    ""
 #define MQTT_KEY         ""
