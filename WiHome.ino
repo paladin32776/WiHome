@@ -4,7 +4,6 @@
 #include "Adafruit_MQTT_Client.h"
 #include "WiHome_Support.h"
 #include "WiHome_Config.h"
-//#include "NoBounceButtons.h"
 
 // Setup Wifi and MQTT Clients
 // Create an ESP8266 WiFiClient object to connect to the MQTT server.

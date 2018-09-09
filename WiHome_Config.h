@@ -18,6 +18,4 @@
 #define PIN_INPUT   12
 #define SOFT_AP_BUTTON 13
 
-// EEPROM Adress Config:
-#define EEPROM_ud_id 213
-#define EEPROM_UserData 0
+
