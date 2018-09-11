@@ -16,7 +16,7 @@ ConfigWebServer* cws;
 
 // User data class:
 UserData ud;
- 
+
 // Setup button debouncing object:
 NoBounceButtons nbb;
 // and global variables to hold button IDs:
@@ -37,18 +37,13 @@ Adafruit_MQTT_Subscribe* config_feed;
 bool is_softAP = false;
 
 
-void setup() 
+void setup()
 {
   Serial.begin(115200);
   delay(2000);
   // Load user data (ssid, password, mdsn name, mqtt broker):
-  Serial.println("ud.load begin");
   ud.load();
-  Serial.println("ud.load end");
-  Serial.println(ud.wlan_ssid);
-  Serial.println(ud.wlan_pass);
-  Serial.println(ud.mqtt_broker);
-  Serial.println(ud.mdns_client_name);
+  ud.show();
 
   // Configure buttons:
   button1 = nbb.create(PIN_INPUT);
@@ -56,11 +51,8 @@ void setup()
 
   // Configure LED pin:
   pinMode(PIN_OUTPUT, OUTPUT);
-  
+
   // Turn on Wifi and MDNS
-  Serial.print("WLAN SSID: >> ");
-  Serial.print(ud.wlan_ssid);
-  Serial.println(" <<");
   if (Wifi_connect(ud.wlan_ssid, ud.wlan_pass, ud.mdns_client_name, &nbb, button2)==false)
     is_softAP = true;
   else
@@ -76,14 +68,14 @@ void setup()
 }
 
 
-void loop_normal() 
+void loop_normal()
 {
-  // Ensure the connection to the MQTT server is alive 
+  // Ensure the connection to the MQTT server is alive
   // (will make the first connection and automatically reconnect when disconnected)
   MQTT_connect(mqtt);
 
   //cws.handleClient();
-  
+
   // Check buttons:
   nbb.check();
 
@@ -91,7 +83,7 @@ void loop_normal()
   Adafruit_MQTT_Subscribe *subscription;
   while ((subscription = mqtt->readSubscription(10))) // Wait for 10ms for a subscription message
   {
-    if (subscription == led_feed) 
+    if (subscription == led_feed)
     {
       String command = (char*)led_feed->lastread;
       Serial.print(F("Received: "));
@@ -112,7 +104,7 @@ void loop_normal()
           digitalWrite(PIN_OUTPUT,!digitalRead(PIN_OUTPUT));
       }
     }
-    if (subscription == config_feed) 
+    if (subscription == config_feed)
     {
       String command = (char*)led_feed->lastread;
       Serial.print(F("Received: "));
@@ -135,7 +127,7 @@ void loop_normal()
     Serial.print(F("..."));
     if (! button_feed->publish("toggle"))
       Serial.println(F("Failed"));
-    else 
+    else
       Serial.println(F("OK!"));
     nbb.reset(button1);
   }
@@ -146,11 +138,11 @@ void loop_normal()
     is_softAP = true;
     nbb.reset(button2);
   }
-  
+
   // ping the server to keep the mqtt connection alive
   // NOT required if you are publishing once every KEEPALIVE seconds
   if (etp_MQTT_KeepAlive.enough_time())
-    if(! mqtt->ping()) 
+    if(! mqtt->ping())
       mqtt->disconnect();
 }
 
@@ -160,7 +152,7 @@ void loop_softAP()
   // TODO: NEED TO PREVENT DOUBLE START OF cws .....!!!
   if (etp_softAP_mode.enough_time())
   {
-    Wifi_softAPmode("WiHome_Config_AP"); 
+    Wifi_softAPmode("WiHome_Config_AP");
     cws = new ConfigWebServer(80,&ud);
   }
   // Blink led in Soft AP mode
@@ -187,5 +179,3 @@ void loop()
   else
     loop_normal();
 }
-
-

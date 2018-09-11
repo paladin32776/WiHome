@@ -38,3 +38,20 @@ void UserData::save()
   EEPROM.end();
   delay(100);
 }
+
+void UserData::show()
+{
+  if (ud_id==EEPROM_ud_id)
+  {
+    Serial.println("UserData -- BEGIN");
+    Serial.print("wlan_ssid: ");
+    Serial.println(wlan_ssid);
+    Serial.print("wlan_pass: ");
+    Serial.println(wlan_pass);
+    Serial.print("mqtt_broker: ");
+    Serial.println(mqtt_broker);
+    Serial.print("mdns_client_name: ");
+    Serial.println(mdns_client_name);
+    Serial.println("UserData -- END");
+  }
+}

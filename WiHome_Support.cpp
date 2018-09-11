@@ -9,7 +9,7 @@ bool Wifi_connect(char* ssid, char* passwd, char* mdns_client_name, NoBounceButt
   if (strlen(ssid)==0)
     return false;
   WiFi.begin(ssid, passwd);
-  while (WiFi.status() != WL_CONNECTED) 
+  while (WiFi.status() != WL_CONNECTED)
   {
     delay(1);
     nbb->check();
@@ -24,9 +24,9 @@ bool Wifi_connect(char* ssid, char* passwd, char* mdns_client_name, NoBounceButt
     Serial.println();
     Serial.println("WiFi connected");
     Serial.println("IP address: "); Serial.println(WiFi.localIP());
-  
+
     // Setup MDNS responder:
-    if (!MDNS.begin(mdns_client_name)) 
+    if (!MDNS.begin(mdns_client_name))
     {
       Serial.println("Error setting up MDNS responder!");
     }
@@ -46,7 +46,7 @@ void MQTT_connect(Adafruit_MQTT_Client* mqtt)
   int8_t ret;
 
   // Stop if already connected.
-  if (mqtt->connected()) 
+  if (mqtt->connected())
   {
     return;
   }
@@ -55,13 +55,13 @@ void MQTT_connect(Adafruit_MQTT_Client* mqtt)
 
   uint8_t retries = 3;
   while ((ret = mqtt->connect()) != 0) // connect will return 0 for connected
-  { 
+  {
        Serial.println(mqtt->connectErrorString(ret));
        Serial.println("Retrying MQTT connection in 5 seconds...");
        mqtt->disconnect();
        delay(5000);  // wait 5 seconds
        retries--;
-       if (retries == 0) 
+       if (retries == 0)
        {
          // basically die and wait for WDT to reset me
          while (1);
@@ -74,12 +74,12 @@ void MQTT_connect(Adafruit_MQTT_Client* mqtt)
 void Wifi_softAPmode(char* ssid)
 {
   // Disconnect infrastructure based Wifi if connected
-  if (WiFi.status() == WL_CONNECTED) 
+  if (WiFi.status() == WL_CONNECTED)
   {
     Serial.println("Stopping infrastructure mode.");
     WiFi.disconnect();
   }
-  // Setup Soft AP  
+  // Setup Soft AP
   IPAddress apIP(192, 168, 4, 1);
   IPAddress netMsk(255, 255, 255, 0);
   Serial.print("Setting soft-AP ... ");
@@ -127,7 +127,7 @@ ConfigWebServer::ConfigWebServer(int port, UserData* pud)
 }
 
 
-void ConfigWebServer::handleRoot() 
+void ConfigWebServer::handleRoot()
 {
   userdata->load();
   String html = html_config_form1;
@@ -161,7 +161,7 @@ void ConfigWebServer::handleNotFound()
 }
 
 
-void ConfigWebServer::handleSaveAndRestart() 
+void ConfigWebServer::handleSaveAndRestart()
 {
   char buf[32];
   String message = "Save and Restart\n\n";
@@ -180,7 +180,7 @@ void ConfigWebServer::handleSaveAndRestart()
     if ((webserver->argName(i)).compareTo("wlan_pass")==0)
       strcpy(userdata->wlan_pass, (webserver->arg(i)).c_str());
     if ((webserver->argName(i)).compareTo("mqtt_broker")==0)
-      strcpy(userdata->mqtt_broker, (webserver->arg(i)).c_str());   
+      strcpy(userdata->mqtt_broker, (webserver->arg(i)).c_str());
     if ((webserver->argName(i)).compareTo("mdns_client_name")==0)
       strcpy(userdata->mdns_client_name, (webserver->arg(i)).c_str());
   }
@@ -202,11 +202,3 @@ void ConfigWebServer::handleClient()
   dnsServer->processNextRequest();
   webserver->handleClient();
 }
-
-
-
-
-
-
-
-

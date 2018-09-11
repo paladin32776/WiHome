@@ -20,4 +20,5 @@ class UserData
     UserData();
     bool load();
     void save();
+    void show(); // shows credentials via serial 
 };
