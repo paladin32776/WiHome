@@ -4,6 +4,7 @@
 #include "Adafruit_MQTT_Client.h"
 #include "WiHome_Support.h"
 #include "WiHome_Config.h"
+#include "MQTT_topic.h"
 
 // Setup Wifi and MQTT Clients
 // Create an ESP8266 WiFiClient object to connect to the MQTT server.
@@ -27,6 +28,11 @@ int button2;
 EnoughTimePassed etp_MQTT_KeepAlive(MQTT_KEEPALIVE);
 EnoughTimePassed etp_softAP_mode(600000);
 EnoughTimePassed etp_led_blink(500);
+
+// Pointers to Topics for MQTT publish and subscribe:
+MQTT_topic* t_button_feed;
+MQTT_topic* t_led_feed;
+MQTT_topic* t_config_feed;
 
 // Pointers for publishing and subscribe MQTT objects:
 Adafruit_MQTT_Publish* button_feed;
@@ -57,11 +63,16 @@ void setup()
     is_softAP = true;
   else
   {
+    // Setup MQTT topics for feeds:
+    t_button_feed = new MQTT_topic(ud.mdns_client_name,"/button");
+    t_led_feed = new MQTT_topic(ud.mdns_client_name, "/led");
+    t_config_feed = new MQTT_topic(ud.mdns_client_name, "/config");
+
     // Setup MQTT subscription for command feed
     mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
-    button_feed = Adafruit_MQTT_Publish_3A(mqtt, ud.mdns_client_name, "/button");
-    led_feed = Adafruit_MQTT_Subscribe_3A(mqtt, ud.mdns_client_name, "/led");
-    config_feed = Adafruit_MQTT_Subscribe_3A(mqtt, ud.mdns_client_name, "/config");
+    button_feed = new Adafruit_MQTT_Publish(mqtt, t_button_feed->topic);
+    led_feed = new Adafruit_MQTT_Subscribe(mqtt, t_led_feed->topic);
+    config_feed = new Adafruit_MQTT_Subscribe(mqtt, t_config_feed->topic);
     mqtt->subscribe(led_feed);
     mqtt->subscribe(config_feed);
   }
@@ -100,7 +111,7 @@ void loop_normal()
       }
       if (command.compareTo("toggle")==0)
       {
-          Serial.println(F("\Toggling LED"));
+          Serial.println(F("\nToggling LED"));
           digitalWrite(PIN_OUTPUT,!digitalRead(PIN_OUTPUT));
       }
     }
@@ -157,7 +168,7 @@ void loop_softAP()
   }
   // Blink led in Soft AP mode
   if (etp_led_blink.enough_time())
-    digitalWrite(LED_BUILTIN,!digitalRead(LED_BUILTIN));
+    digitalWrite(PIN_OUTPUT,!digitalRead(PIN_OUTPUT));
   // Handle webserver and dnsserver events
   cws->handleClient();
   // Check buttonsß

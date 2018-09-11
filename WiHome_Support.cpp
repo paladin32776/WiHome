@@ -71,7 +71,7 @@ void MQTT_connect(Adafruit_MQTT_Client* mqtt)
 }
 
 
-void Wifi_softAPmode(char* ssid)
+void Wifi_softAPmode(const char* ssid)
 {
   // Disconnect infrastructure based Wifi if connected
   if (WiFi.status() == WL_CONNECTED)
@@ -85,11 +85,12 @@ void Wifi_softAPmode(char* ssid)
   Serial.print("Setting soft-AP ... ");
   WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(apIP, apIP, netMsk);
-  boolean result = WiFi.softAP(ssid);
-  if(result == true)
-    Serial.println("Ready");
-  else
-    Serial.println("Failed!");
+  WiFi.softAP(ssid);
+  // boolean result = WiFi.softAP(ssid);
+  // if(result == true)
+  //   Serial.println("Ready");
+  // else
+  //   Serial.println("Failed!");
 }
 
 
