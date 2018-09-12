@@ -4,7 +4,7 @@ NoBounceButtons::NoBounceButtons() // default constructor
 {
 }
 
-int NoBounceButtons::create(unsigned int pin)  // create a new button
+char NoBounceButtons::create(unsigned char pin)  // create a new button
 {
   if (N<MAX_BUTTONS)
   {
@@ -23,13 +23,13 @@ int NoBounceButtons::create(unsigned int pin)  // create a new button
     return -1;
 }
 
-unsigned char NoBounceButtons::action(unsigned int id)  // check if button has been pressed
+unsigned char NoBounceButtons::action(unsigned char id)  // check if button has been pressed
 {
   return Action[id];
 }
 
 
-void NoBounceButtons::reset(unsigned int id)  // reset button action
+void NoBounceButtons::reset(unsigned char id)  // reset button action
 {
   Action[id] = 0;
 }

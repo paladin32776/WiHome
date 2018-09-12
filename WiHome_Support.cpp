@@ -1,5 +1,27 @@
 #include "WiHome_Support.h"
 
+void Connections(UserData* ud, WiFiClient* client, EnoughTimePassed* etp_WifiConnect)
+{
+  if ((WiFi.status() != WL_CONNECTED) && (etp_WifiConnect->enough_time()))
+  {
+    WiFi.begin(ud->wlan_ssid, ud->wlan_pass);
+  }
+  // if ((WiFi.status() == WL_CONNECTED) && )
+  // {
+  //   // Setup MDNS responder:
+  //   if (!MDNS.begin(ud->mdns_client_name))
+  //   {
+  //     Serial.println("Error setting up MDNS responder!");
+  //   }
+  //   else
+  //   {
+  //     Serial.println("mDNS responder started");
+  //     MDNS.addService("esp", "tcp", 8080); // Announce esp tcp service on port 8080
+  //   }
+  // }
+}
+
+
 bool Wifi_connect(char* ssid, char* passwd, char* mdns_client_name, NoBounceButtons* nbb, int button)
 {
   // Connect to WiFi access point.

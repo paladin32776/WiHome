@@ -25,6 +25,7 @@ int button1;
 int button2;
 
 // Create objects for EnoughTimePassed class:
+EnoughTimePassed etp_WifiConnect(10000);
 EnoughTimePassed etp_MQTT_KeepAlive(MQTT_KEEPALIVE);
 EnoughTimePassed etp_softAP_mode(600000);
 EnoughTimePassed etp_led_blink(500);
@@ -47,19 +48,27 @@ void setup()
 {
   Serial.begin(115200);
   delay(2000);
+  // Configure pins:
+  pinMode(PIN_OUTPUT, OUTPUT);
+  // Configure buttons:
+  button1 = nbb.create(PIN_INPUT);
+  button2 = nbb.create(SOFT_AP_BUTTON);
+  // Fork between normal and softAP mode:
+  setup_normal();
+//   if (is_softAP == true)
+//     setup_softAP();
+//   else
+//     setup_normal();
+}
+
+void setup_normal()
+{
   // Load user data (ssid, password, mdsn name, mqtt broker):
   ud.load();
   ud.show();
 
-  // Configure buttons:
-  button1 = nbb.create(PIN_INPUT);
-  button2 = nbb.create(SOFT_AP_BUTTON);
-
-  // Configure LED pin:
-  pinMode(PIN_OUTPUT, OUTPUT);
-
   // Turn on Wifi and MDNS
-  if (Wifi_connect(ud.wlan_ssid, ud.wlan_pass, ud.mdns_client_name, &nbb, button2)==false)
+  if (Wifi_connect(ud.wlan_ssid, ud.wlan_pass, ud.mdns_client_name, &nbb, button1)==false)
     is_softAP = true;
   else
   {
@@ -67,9 +76,9 @@ void setup()
     t_button_feed = new MQTT_topic(ud.mdns_client_name,"/button");
     t_led_feed = new MQTT_topic(ud.mdns_client_name, "/led");
     t_config_feed = new MQTT_topic(ud.mdns_client_name, "/config");
-
-    // Setup MQTT subscription for command feed
+    // Setup MQTT client:
     mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
+    // Setup MQTT subscriptions and publications
     button_feed = new Adafruit_MQTT_Publish(mqtt, t_button_feed->topic);
     led_feed = new Adafruit_MQTT_Subscribe(mqtt, t_led_feed->topic);
     config_feed = new Adafruit_MQTT_Subscribe(mqtt, t_config_feed->topic);
