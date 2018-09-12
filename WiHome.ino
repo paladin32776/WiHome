@@ -132,7 +132,7 @@ void loop_normal()
   }
 
   // Publish if required:
-  if (nbb.action(button1))
+  if (nbb.action(button1)==1)
   {
     Serial.print(F("\nSending toggle signal "));
     Serial.print(F("..."));
@@ -143,11 +143,11 @@ void loop_normal()
     nbb.reset(button1);
   }
 
-  if (nbb.action(button2))
+  if (nbb.action(button1)==2)
   {
     Serial.println("Going into SoftAP mode ...");
     is_softAP = true;
-    nbb.reset(button2);
+    nbb.reset(button1);
   }
 
   // ping the server to keep the mqtt connection alive
@@ -173,11 +173,11 @@ void loop_softAP()
   cws->handleClient();
   // Check buttonsß
   nbb.check();
-  if (nbb.action(button2))
+  if (nbb.action(button1)==1)
   {
     Serial.println("Going back to Infrastructure mode ...");
     is_softAP = false;
-    nbb.reset(button2);
+    nbb.reset(button1);
     setup();
   }
 }

@@ -26,8 +26,6 @@ void MQTT_connect(Adafruit_MQTT_Client* mqtt);
 // Function to create soft-AP
 void Wifi_softAPmode(const char* ssid);
 
-Adafruit_MQTT_Publish* Adafruit_MQTT_Publish_3A(Adafruit_MQTT_Client* mqtt, char* client_name, const char* topic_name);
-Adafruit_MQTT_Subscribe* Adafruit_MQTT_Subscribe_3A(Adafruit_MQTT_Client* mqtt, char* client_name, const char* topic_name);
 
 // Web server class
 class ConfigWebServer

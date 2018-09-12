@@ -94,24 +94,6 @@ void Wifi_softAPmode(const char* ssid)
 }
 
 
-Adafruit_MQTT_Publish* Adafruit_MQTT_Publish_3A(Adafruit_MQTT_Client* mqtt, char* client_name, const char* topic_name)
-{
-  char buf[64];
-  strcpy(buf,client_name);
-  strcat(buf,topic_name);
-  return new Adafruit_MQTT_Publish(mqtt,buf);
-}
-
-
-Adafruit_MQTT_Subscribe* Adafruit_MQTT_Subscribe_3A(Adafruit_MQTT_Client* mqtt, char* client_name, const char* topic_name)
-{
-  char buf[64];
-  strcpy(buf,client_name);
-  strcat(buf,topic_name);
-  return new Adafruit_MQTT_Subscribe(mqtt,buf);
-}
-
-
 ConfigWebServer::ConfigWebServer(int port, UserData* pud)
 {
   userdata = pud;
