@@ -11,3 +11,9 @@ https://github.com/esp8266/Arduino/tree/master/libraries/ESP8266mDNS
 
 Adafruit MQTT Library:
 https://github.com/adafruit/Adafruit_MQTT_Library
+
+SignalLED:
+https://github.com/paladin32776/SignalLED
+
+EnoughTimePassed:
+https://github.com/paladin32776/EnoughTimePassed

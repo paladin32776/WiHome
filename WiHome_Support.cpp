@@ -1,118 +1,116 @@
 #include "WiHome_Support.h"
 
-void Connections(UserData* ud, WiFiClient* client, EnoughTimePassed* etp_WifiConnect)
+bool needMDNS=true;
+bool needDNSandCWS=true;
+EnoughTimePassed etp_Wifi(10000);
+EnoughTimePassed etp_MQTT_retry(5000);
+
+// Web server:
+ConfigWebServer* cws;
+
+bool ConnectStation(char* ssid, char* passwd, char* mdns_client_name)
 {
-  if ((WiFi.status() != WL_CONNECTED) && (etp_WifiConnect->enough_time()))
+  if (WiFi.status()!=WL_CONNECTED || WiFi.getMode()!=WIFI_STA)
   {
-    WiFi.begin(ud->wlan_ssid, ud->wlan_pass);
+    if (etp_Wifi.enough_time())
+    {
+      WiFi.softAPdisconnect(true);
+      if (WiFi.isConnected())
+        WiFi.disconnect();
+      while (WiFi.status()==WL_CONNECTED)
+        delay(50);
+      Serial.printf("Connecting to %s\n",ssid);
+      WiFi.begin(ssid,passwd);
+      WiFi.hostname(mdns_client_name);
+      needMDNS=true;
+    }
   }
-  // if ((WiFi.status() == WL_CONNECTED) && )
-  // {
-  //   // Setup MDNS responder:
-  //   if (!MDNS.begin(ud->mdns_client_name))
-  //   {
-  //     Serial.println("Error setting up MDNS responder!");
-  //   }
-  //   else
-  //   {
-  //     Serial.println("mDNS responder started");
-  //     MDNS.addService("esp", "tcp", 8080); // Announce esp tcp service on port 8080
-  //   }
-  // }
+  if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA && needMDNS)
+  {
+    Serial.printf("Connected to station (IP=%s, name=%s).\nSetting up MDNS client:\n",
+                  WiFi.localIP().toString().c_str(), WiFi.hostname().c_str());
+    if (!MDNS.begin(mdns_client_name))
+      Serial.println("Error setting up MDNS responder!");
+    else
+    {
+      Serial.println("mDNS responder started");
+      MDNS.addService("esp", "tcp", 8080); // Announce ßesp tcp service on port 8080
+      needMDNS=false;
+    }
+  }
+  if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA && !needMDNS)
+    return true;
+  return false;
 }
 
 
-bool Wifi_connect(char* ssid, char* passwd, char* mdns_client_name, NoBounceButtons* nbb, int button)
+// Function to connect and reconnect as necessary to the MQTT server.
+// Should be called in the loop function and it will take care if connecting.
+bool MQTT_connect(Adafruit_MQTT_Client* mqtt)
 {
-  // Connect to WiFi access point.
-  Serial.println(); Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  if (strlen(ssid)==0)
+  int8_t ret;
+  // Stop if already connected.
+  if (!WiFi.isConnected())
     return false;
-  WiFi.begin(ssid, passwd);
-  while (WiFi.status() != WL_CONNECTED)
+  if (mqtt->connected())
+    return true;
+  // If not connected and enough time has passed since last reconnection attempt
+  if (etp_MQTT_retry.enough_time())
   {
-    delay(1);
-    nbb->check();
-    if (nbb->action(button))
+    Serial.print("Connecting to MQTT... ");
+    if ((ret = mqtt->connect()) != 0) // connect will return 0 for connected
     {
-      nbb->reset(button);
+      Serial.println(mqtt->connectErrorString(ret));
+      mqtt->disconnect();
       return false;
     }
-  }
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    Serial.println();
-    Serial.println("WiFi connected");
-    Serial.println("IP address: "); Serial.println(WiFi.localIP());
-
-    // Setup MDNS responder:
-    if (!MDNS.begin(mdns_client_name))
+    else
     {
-      Serial.println("Error setting up MDNS responder!");
+      Serial.println("MQTT Connected!");
+      return true;
     }
-    Serial.println("mDNS responder started");
-    MDNS.addService("esp", "tcp", 8080); // Announce esp tcp service on port 8080
-    return true;
   }
   else
     return false;
 }
 
 
-// Function to connect and reconnect as necessary to the MQTT server.
-// Should be called in the loop function and it will take care if connecting.
-void MQTT_connect(Adafruit_MQTT_Client* mqtt)
+void ConnectSoftAP(char* ssid, UserData* ud)
 {
-  int8_t ret;
-
-  // Stop if already connected.
-  if (mqtt->connected())
+  if (WiFi.status()!=WL_DISCONNECTED || WiFi.getMode()!=WIFI_AP)
   {
-    return;
+    Serial.printf("Going to SoftAP mode:\n");
+    WiFi.softAPdisconnect(true);
+    if (WiFi.isConnected())
+      WiFi.disconnect(true);
+    while (WiFi.status()==WL_CONNECTED)
+      delay(50);
+    IPAddress apIP(192, 168, 4, 1);
+    IPAddress netMsk(255, 255, 255, 0);
+    WiFi.mode(WIFI_AP);
+    WiFi.softAPConfig(apIP, apIP, netMsk);
+    if (WiFi.softAP(ssid))
+    {
+      Serial.printf("Soft AP created!\n");
+      Serial.printf("SoftAP IP: %s\n",WiFi.softAPIP().toString().c_str());
+      Serial.printf("Status/Mode: %d/%d\n",WiFi.status(),WiFi.getMode());
+    }
+    else
+    {
+      Serial.printf("Soft AP creation FAILED.\n");
+    }
+  }
+  else
+  {
+    if (needDNSandCWS)
+    {
+      cws = new ConfigWebServer(80,ud);
+      needDNSandCWS=false;
+    }
+    // Handle webserver and dnsserver events
+    cws->handleClient();
   }
 
-  Serial.print("Connecting to MQTT... ");
-
-  uint8_t retries = 3;
-  while ((ret = mqtt->connect()) != 0) // connect will return 0 for connected
-  {
-       Serial.println(mqtt->connectErrorString(ret));
-       Serial.println("Retrying MQTT connection in 5 seconds...");
-       mqtt->disconnect();
-       delay(5000);  // wait 5 seconds
-       retries--;
-       if (retries == 0)
-       {
-         // basically die and wait for WDT to reset me
-         while (1);
-       }
-  }
-  Serial.println("MQTT Connected!");
-}
-
-
-void Wifi_softAPmode(const char* ssid)
-{
-  // Disconnect infrastructure based Wifi if connected
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    Serial.println("Stopping infrastructure mode.");
-    WiFi.disconnect();
-  }
-  // Setup Soft AP
-  IPAddress apIP(192, 168, 4, 1);
-  IPAddress netMsk(255, 255, 255, 0);
-  Serial.print("Setting soft-AP ... ");
-  WiFi.mode(WIFI_AP);
-  WiFi.softAPConfig(apIP, apIP, netMsk);
-  WiFi.softAP(ssid);
-  // boolean result = WiFi.softAP(ssid);
-  // if(result == true)
-  //   Serial.println("Ready");
-  // else
-  //   Serial.println("Failed!");
 }
 
 
@@ -197,7 +195,7 @@ void ConfigWebServer::handleSaveAndRestart()
   Serial.println("--- Data to be saved end ---");
   userdata->save();
   message += "Userdata saved to EEPROM.\n";
-  Serial.print("Userdata saved to EEPROM.");
+  Serial.println("Userdata saved to EEPROM.");
   webserver->send(200, "text/plain", message);
 }
 

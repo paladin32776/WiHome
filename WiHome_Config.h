@@ -15,6 +15,6 @@
 #define MQTT_KEEPALIVE   300000
 
 // Pin configurations:
-#define PIN_OUTPUT  5
-#define PIN_INPUT   12
-#define SOFT_AP_BUTTON 13
+#define PIN_LED     5
+#define PIN_BUTTON  12
+#define PIN_RELAY   13
