@@ -9,11 +9,9 @@
 // Setup Wifi and MQTT Clients
 // Create an ESP8266 WiFiClient object to connect to the MQTT server.
 WiFiClient client;
+
 // Setup the MQTT client class by passing in the WiFi client and MQTT server and login details.
 Adafruit_MQTT_Client* mqtt;
-
-// Web server:
-ConfigWebServer* cws;
 
 // User data class:
 UserData ud;
@@ -22,133 +20,152 @@ UserData ud;
 NoBounceButtons nbb;
 // and global variables to hold button IDs:
 int button1;
-int button2;
+
+// Setup led and relay:
+SignalLED led1(PIN_LED, SLED_BLINK_FAST_1, true);
+SignalLED relay1(PIN_RELAY, SLED_OFF, false);
 
 // Create objects for EnoughTimePassed class:
-EnoughTimePassed etp_WifiConnect(10000);
 EnoughTimePassed etp_MQTT_KeepAlive(MQTT_KEEPALIVE);
-EnoughTimePassed etp_softAP_mode(600000);
-EnoughTimePassed etp_led_blink(500);
 
 // Pointers to Topics for MQTT publish and subscribe:
-MQTT_topic* t_button_feed;
-MQTT_topic* t_led_feed;
-MQTT_topic* t_config_feed;
+MQTT_topic* t_stat_relay_feed;
+MQTT_topic* t_cmd_relay_feed;
 
 // Pointers for publishing and subscribe MQTT objects:
-Adafruit_MQTT_Publish* button_feed;
-Adafruit_MQTT_Subscribe* led_feed;
-Adafruit_MQTT_Subscribe* config_feed;
+Adafruit_MQTT_Publish* stat_relay_feed;
+Adafruit_MQTT_Subscribe* cmd_relay_feed;
 
 // Global variable to indicate soft AP mode:
 bool is_softAP = false;
+
+bool wlan_ok = false;
+bool mqtt_ok = false;
+
+void MQTT_create_feeds()
+{
+  // Setup MQTT topics for feeds:
+  t_stat_relay_feed = new MQTT_topic(ud.mdns_client_name,"/stat/relay");
+  t_cmd_relay_feed = new MQTT_topic(ud.mdns_client_name, "/cmd/relay");
+  // Setup MQTT client:
+  // mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
+  mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
+  // Setup MQTT subscriptions and publications
+  stat_relay_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_relay_feed->topic);
+  cmd_relay_feed = new Adafruit_MQTT_Subscribe(mqtt, t_cmd_relay_feed->topic);
+  mqtt->subscribe(cmd_relay_feed);
+}
+
+
+void MQTT_destroy_feeds()
+{
+  mqtt->unsubscribe(cmd_relay_feed);
+  delete stat_relay_feed;
+  delete cmd_relay_feed;
+  delete mqtt;
+  delete t_stat_relay_feed;
+  delete t_cmd_relay_feed;
+}
 
 
 void setup()
 {
   Serial.begin(115200);
   delay(2000);
-  // Configure pins:
-  pinMode(PIN_OUTPUT, OUTPUT);
+  Serial.printf("WiHome v0.9\n===========\nAuthor:\nGernot\nFattinger\n");
   // Configure buttons:
-  button1 = nbb.create(PIN_INPUT);
-  button2 = nbb.create(SOFT_AP_BUTTON);
-  // Fork between normal and softAP mode:
-  setup_normal();
-//   if (is_softAP == true)
-//     setup_softAP();
-//   else
-//     setup_normal();
-}
-
-void setup_normal()
-{
+  button1 = nbb.create(PIN_BUTTON);
   // Load user data (ssid, password, mdsn name, mqtt broker):
   ud.load();
   ud.show();
-
-  // Turn on Wifi and MDNS
-  if (Wifi_connect(ud.wlan_ssid, ud.wlan_pass, ud.mdns_client_name, &nbb, button1)==false)
-    is_softAP = true;
-  else
-  {
-    // Setup MQTT topics for feeds:
-    t_button_feed = new MQTT_topic(ud.mdns_client_name,"/button");
-    t_led_feed = new MQTT_topic(ud.mdns_client_name, "/led");
-    t_config_feed = new MQTT_topic(ud.mdns_client_name, "/config");
-    // Setup MQTT client:
-    mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
-    // Setup MQTT subscriptions and publications
-    button_feed = new Adafruit_MQTT_Publish(mqtt, t_button_feed->topic);
-    led_feed = new Adafruit_MQTT_Subscribe(mqtt, t_led_feed->topic);
-    config_feed = new Adafruit_MQTT_Subscribe(mqtt, t_config_feed->topic);
-    mqtt->subscribe(led_feed);
-    mqtt->subscribe(config_feed);
-  }
+  // Create MQTT feeds:
+  MQTT_create_feeds();
 }
 
 
 void loop_normal()
 {
-  // Ensure the connection to the MQTT server is alive
+  // Ensure that WiFi Station connection is alive:
   // (will make the first connection and automatically reconnect when disconnected)
-  MQTT_connect(mqtt);
+  wlan_ok = ConnectStation(ud.wlan_ssid, ud.wlan_pass, ud.mdns_client_name);
 
-  //cws.handleClient();
+  // Ensure the connection to the MQTT server is alive (also checks wlan connection)
+  // (will make the first connection and automatically reconnect when disconnected)
+  mqtt_ok = MQTT_connect(mqtt);
 
-  // Check buttons:
-  nbb.check();
-
-  // Check subscriptions:
-  Adafruit_MQTT_Subscribe *subscription;
-  while ((subscription = mqtt->readSubscription(10))) // Wait for 10ms for a subscription message
+  if (mqtt_ok)
   {
-    if (subscription == led_feed)
+    // Check subscriptions:
+    Adafruit_MQTT_Subscribe *subscription;
+    while ((subscription = mqtt->readSubscription(10))) // Wait for 10ms for a subscription message
     {
-      String command = (char*)led_feed->lastread;
-      Serial.print(F("Received: "));
-      Serial.println(command);
-      if (command.compareTo("on")==0)
+      if (subscription == cmd_relay_feed)
       {
-          Serial.println(F("\nTurning LED on"));
-          digitalWrite(PIN_OUTPUT,LOW);
-      }
-      if (command.compareTo("off")==0)
-      {
-          Serial.println(F("\nTurning LED off"));
-          digitalWrite(PIN_OUTPUT,HIGH);
-      }
-      if (command.compareTo("toggle")==0)
-      {
-          Serial.println(F("\nToggling LED"));
-          digitalWrite(PIN_OUTPUT,!digitalRead(PIN_OUTPUT));
-      }
-    }
-    if (subscription == config_feed)
-    {
-      String command = (char*)led_feed->lastread;
-      Serial.print(F("Received: "));
-      Serial.println(command);
-      if (command.compareTo("direct")==0)
-      {
-          Serial.println(F("\nConfiguring for direct button to led connection"));
-      }
-      if (command.compareTo("indirect")==0)
-      {
-          Serial.println(F("\nConfiguring for indirect button to ledelay connection"));
+        String command = (char*)cmd_relay_feed->lastread;
+        Serial.print(F("Received: "));
+        Serial.println(command);
+        if (command.compareTo("on")==0)
+        {
+            Serial.println(F("Turning relay on"));
+            relay1.set(SLED_ON);
+        }
+        if (command.compareTo("off")==0)
+        {
+            Serial.println(F("Turning relay off"));
+            relay1.set(SLED_OFF);
+        }
+        if (command.compareTo("toggle")==0)
+        {
+            Serial.println(F("Toggling relay"));
+            relay1.invert();
+            bool result=false;
+            if (relay1.get()==SLED_ON)
+              result = stat_relay_feed->publish("on");
+            else if (relay1.get()==SLED_OFF)
+              result = stat_relay_feed->publish("off");
+            if (result)
+              Serial.println(F("Ok!"));
+            else
+              Serial.println(F("Failed."));
+        }
       }
     }
   }
 
+  // Logic for LED status display:
+  if (mqtt_ok)
+  {
+    led1.set(relay1.get());
+  }
+  else if (wlan_ok)
+  {
+    led1.set(SLED_BLINK_FAST_3);
+  }
+  else
+  {
+    led1.set(SLED_BLINK_FAST_1);
+  }
+
+  // LED and RELAY checks:
+  led1.check();
+  relay1.check();
+  // Check buttons:
+  nbb.check();
+
   // Publish if required:
   if (nbb.action(button1)==1)
   {
-    Serial.print(F("\nSending toggle signal "));
-    Serial.print(F("..."));
-    if (! button_feed->publish("toggle"))
-      Serial.println(F("Failed"));
+    Serial.print(F("\nButton1 pressed ..."));
+    relay1.invert();
+    bool result=false;
+    if (relay1.get()==SLED_ON)
+      result = stat_relay_feed->publish("on");
+    else if (relay1.get()==SLED_OFF)
+      result = stat_relay_feed->publish("off");
+    if (result)
+      Serial.println(F("Ok!"));
     else
-      Serial.println(F("OK!"));
+      Serial.println(F("Failed."));
     nbb.reset(button1);
   }
 
@@ -156,12 +173,14 @@ void loop_normal()
   {
     Serial.println("Going into SoftAP mode ...");
     is_softAP = true;
+    MQTT_destroy_feeds();
+    led1.set(SLED_BLINK_SLOW); // Blink led slow in SoftAP mode
     nbb.reset(button1);
   }
 
   // ping the server to keep the mqtt connection alive
   // NOT required if you are publishing once every KEEPALIVE seconds
-  if (etp_MQTT_KeepAlive.enough_time())
+  if (etp_MQTT_KeepAlive.enough_time() && WiFi.isConnected())
     if(! mqtt->ping())
       mqtt->disconnect();
 }
@@ -169,25 +188,20 @@ void loop_normal()
 
 void loop_softAP()
 {
-  // TODO: NEED TO PREVENT DOUBLE START OF cws .....!!!
-  if (etp_softAP_mode.enough_time())
-  {
-    Wifi_softAPmode("WiHome_Config_AP");
-    cws = new ConfigWebServer(80,&ud);
-  }
-  // Blink led in Soft AP mode
-  if (etp_led_blink.enough_time())
-    digitalWrite(PIN_OUTPUT,!digitalRead(PIN_OUTPUT));
-  // Handle webserver and dnsserver events
-  cws->handleClient();
-  // Check buttonsß
+  ConnectSoftAP("WiHome_Config_AP", &ud);
+
+  // LED checks:
+  led1.check();
+  // Check buttons
   nbb.check();
+
   if (nbb.action(button1)==1)
   {
-    Serial.println("Going back to Infrastructure mode ...");
+    Serial.println("Going back to Station mode ...");
     is_softAP = false;
+    MQTT_create_feeds();
+    led1.set(SLED_OFF); // Turn off led when going to station mode
     nbb.reset(button1);
-    setup();
   }
 }
 

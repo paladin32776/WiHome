@@ -10,21 +10,21 @@
 #include "NoBounceButtons.h"
 #include "UserData.h"
 #include "EnoughTimePassed.h"
+#include "SignalLED.h"
 
 #define DEBUG_ESP_DNS
 #define DEBUG_ESP_PORT Serial
 
-// Function to connect to WiFi and mDNS
-bool Wifi_connect(char* ssid, char* passwd, char* mdns_client_name, NoBounceButtons* nbb, int button);
 
+// Function to connect to WiFi and mDNS
+bool ConnectStation(char* ssid, char* passwd, char* mdns_client_name);
 
 // Function to connect and reconnect as necessary to the MQTT server.
 // Should be called in the loop function and it will take care if connecting.
-void MQTT_connect(Adafruit_MQTT_Client* mqtt);
-
+bool MQTT_connect(Adafruit_MQTT_Client* mqtt);
 
 // Function to create soft-AP
-void Wifi_softAPmode(const char* ssid);
+void ConnectSoftAP(char* ssid, UserData* ud);
 
 
 // Web server class
