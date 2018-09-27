@@ -50,8 +50,8 @@ bool MQTT_connect(Adafruit_MQTT_Client* mqtt)
 {
   int8_t ret;
   // Stop if already connected.
-  if (!WiFi.isConnected())
-    return false;
+  // if (!WiFi.isConnected())
+  //   return false;
   if (mqtt->connected())
     return true;
   // If not connected and enough time has passed since last reconnection attempt

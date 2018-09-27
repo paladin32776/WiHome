@@ -41,30 +41,39 @@ bool is_softAP = false;
 
 bool wlan_ok = false;
 bool mqtt_ok = false;
+bool mqtt_feeds_exist = false;
 
 void MQTT_create_feeds()
 {
-  // Setup MQTT topics for feeds:
-  t_stat_relay_feed = new MQTT_topic(ud.mdns_client_name,"/stat/relay");
-  t_cmd_relay_feed = new MQTT_topic(ud.mdns_client_name, "/cmd/relay");
-  // Setup MQTT client:
-  // mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
-  mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
-  // Setup MQTT subscriptions and publications
-  stat_relay_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_relay_feed->topic);
-  cmd_relay_feed = new Adafruit_MQTT_Subscribe(mqtt, t_cmd_relay_feed->topic);
-  mqtt->subscribe(cmd_relay_feed);
+  if (!mqtt_feeds_exist)
+  {
+    // Setup MQTT topics for feeds:
+    t_stat_relay_feed = new MQTT_topic(ud.mdns_client_name,"/stat/relay");
+    t_cmd_relay_feed = new MQTT_topic(ud.mdns_client_name, "/cmd/relay");
+    // Setup MQTT client:
+    // mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
+    mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
+    // Setup MQTT subscriptions and publications
+    stat_relay_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_relay_feed->topic);
+    cmd_relay_feed = new Adafruit_MQTT_Subscribe(mqtt, t_cmd_relay_feed->topic);
+    mqtt->subscribe(cmd_relay_feed);
+    mqtt_feeds_exist = true;
+  }
 }
 
 
 void MQTT_destroy_feeds()
 {
-  mqtt->unsubscribe(cmd_relay_feed);
-  delete stat_relay_feed;
-  delete cmd_relay_feed;
-  delete mqtt;
-  delete t_stat_relay_feed;
-  delete t_cmd_relay_feed;
+  if (mqtt_feeds_exist)
+  {
+    mqtt->unsubscribe(cmd_relay_feed);
+    delete stat_relay_feed;
+    delete cmd_relay_feed;
+    delete mqtt;
+    delete t_stat_relay_feed;
+    delete t_cmd_relay_feed;
+    mqtt_feeds_exist = false;
+  }
 }
 
 
@@ -72,7 +81,7 @@ void setup()
 {
   Serial.begin(115200);
   delay(2000);
-  Serial.printf("WiHome v0.9\n===========\nAuthor:\nGernot\nFattinger\n");
+  Serial.printf("WiHome v0.92\n===========\nAuthor:\nGernot\nFattinger\n");
   // Configure buttons:
   button1 = nbb.create(PIN_BUTTON);
   // Load user data (ssid, password, mdsn name, mqtt broker):
@@ -89,9 +98,19 @@ void loop_normal()
   // (will make the first connection and automatically reconnect when disconnected)
   wlan_ok = ConnectStation(ud.wlan_ssid, ud.wlan_pass, ud.mdns_client_name);
 
+  if (wlan_ok)
+    MQTT_create_feeds();
+  else
+    MQTT_destroy_feeds();
   // Ensure the connection to the MQTT server is alive (also checks wlan connection)
   // (will make the first connection and automatically reconnect when disconnected)
-  mqtt_ok = MQTT_connect(mqtt);
+  if (wlan_ok)
+    mqtt_ok = MQTT_connect(mqtt);
+  else
+    mqtt_ok = false;
+
+  if (!mqtt_ok)
+    MQTT_destroy_feeds();
 
   if (mqtt_ok)
   {
@@ -180,9 +199,13 @@ void loop_normal()
 
   // ping the server to keep the mqtt connection alive
   // NOT required if you are publishing once every KEEPALIVE seconds
-  if (etp_MQTT_KeepAlive.enough_time() && WiFi.isConnected())
+  if (etp_MQTT_KeepAlive.enough_time() && WiFi.isConnected() && mqtt_ok)
     if(! mqtt->ping())
+    {
       mqtt->disconnect();
+      mqtt_ok=false;
+      MQTT_destroy_feeds();
+    }
 }
 
 
