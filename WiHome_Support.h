@@ -5,6 +5,8 @@
 #include <DNSServer.h>
 #include "WiHome_HTML.h"
 #include <pgmspace.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 
 #include "WiHome_Config.h"
 #include "NoBounceButtons.h"

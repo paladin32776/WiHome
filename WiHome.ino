@@ -147,6 +147,19 @@ void loop_normal()
             else
               Serial.println(F("Failed."));
         }
+        if (command.compareTo("status")==0)
+        {
+            Serial.println(F("Sending status ..."));
+            bool result=false;
+            if (relay1.get()==SLED_ON)
+              result = stat_relay_feed->publish("on");
+            else if (relay1.get()==SLED_OFF)
+              result = stat_relay_feed->publish("off");
+            if (result)
+              Serial.println(F("Ok!"));
+            else
+              Serial.println(F("Failed."));
+        }
       }
     }
   }

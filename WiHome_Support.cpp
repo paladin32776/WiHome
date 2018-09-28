@@ -36,10 +36,16 @@ bool ConnectStation(char* ssid, char* passwd, char* mdns_client_name)
       Serial.println("mDNS responder started");
       MDNS.addService("esp", "tcp", 8080); // Announce ßesp tcp service on port 8080
       needMDNS=false;
+      ArduinoOTA.setPort(8266);
+      ArduinoOTA.setHostname(mdns_client_name);
+      ArduinoOTA.begin();
     }
   }
   if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA && !needMDNS)
+  {
+    ArduinoOTA.handle();
     return true;
+  }
   return false;
 }
 
