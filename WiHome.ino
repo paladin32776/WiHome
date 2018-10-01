@@ -22,8 +22,8 @@ NoBounceButtons nbb;
 int button1;
 
 // Setup led and relay:
-SignalLED led1(PIN_LED, SLED_BLINK_FAST_1, true);
-SignalLED relay1(PIN_RELAY, SLED_OFF, false);
+SignalLED led1(PIN_LED, SLED_BLINK_FAST_1, PIN_LED_ACTIVE_LOW);
+SignalLED relay1(PIN_RELAY, SLED_OFF, PIN_RELAY_ACTIVE_LOW);
 
 // Create objects for EnoughTimePassed class:
 EnoughTimePassed etp_MQTT_KeepAlive(MQTT_KEEPALIVE);
@@ -36,9 +36,8 @@ MQTT_topic* t_cmd_relay_feed;
 Adafruit_MQTT_Publish* stat_relay_feed;
 Adafruit_MQTT_Subscribe* cmd_relay_feed;
 
-// Global variable to indicate soft AP mode:
+// Global variable to indicate soft AP mode, wlan and mqtt status, and existence of feeds:
 bool is_softAP = false;
-
 bool wlan_ok = false;
 bool mqtt_ok = false;
 bool mqtt_feeds_exist = false;
@@ -160,6 +159,11 @@ void loop_normal()
             else
               Serial.println(F("Failed."));
         }
+        if (command.compareTo("pulse")==0)
+        {
+            Serial.println(F("Pulsing relay once"));
+            relay1.set(SLED_PULSE);
+        }
       }
     }
   }
@@ -189,15 +193,18 @@ void loop_normal()
   {
     Serial.print(F("\nButton1 pressed ..."));
     relay1.invert();
-    bool result=false;
-    if (relay1.get()==SLED_ON)
-      result = stat_relay_feed->publish("on");
-    else if (relay1.get()==SLED_OFF)
-      result = stat_relay_feed->publish("off");
-    if (result)
-      Serial.println(F("Ok!"));
-    else
-      Serial.println(F("Failed."));
+    if (mqtt_feeds_exist)
+    {
+      bool result=false;
+      if (relay1.get()==SLED_ON)
+        result = stat_relay_feed->publish("on");
+      else if (relay1.get()==SLED_OFF)
+        result = stat_relay_feed->publish("off");
+      if (result)
+        Serial.println(F("Ok!"));
+      else
+        Serial.println(F("Failed."));
+    }
     nbb.reset(button1);
   }
 
