@@ -17,3 +17,6 @@ https://github.com/paladin32776/SignalLED
 
 EnoughTimePassed:
 https://github.com/paladin32776/EnoughTimePassed
+
+NoBounceButtons
+https://github.com/paladin32776/NoBounceButtons
