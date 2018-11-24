@@ -209,9 +209,11 @@ void loop_normal()
   // LED and RELAY checks:
   led1.check();
   go->check();
-  // relay1.check();
   // Check buttons:
   nbb.check();
+
+  if (go->get_state()!=0)
+    Serial.printf("pos=%3d  i=%4d\n",go->get_position(),go->get_imotor());
 
   if (etp_Position_Feedback.enough_time() && go->get_position_percent()!=position_percent_last
       && go->valid_open_position() && go->valid_closed_position() && mqtt_feeds_exist)
@@ -224,8 +226,8 @@ void loop_normal()
   if (nbb.action(button1)==1)
   {
     Serial.print(F("\nButton1 pressed ..."));
-    // relay1.invert();
     go->cycle();
+    Serial.printf("state = %d ",go->get_state());
     if (mqtt_feeds_exist)
     {
       bool result=false;
