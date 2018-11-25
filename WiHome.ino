@@ -7,6 +7,9 @@
 #include "MQTT_topic.h"
 #include "GateOpenerStateMachine.h"
 
+const char compile_date[] = __DATE__ " " __TIME__;
+const char version[] = "v1.0";
+
 // Setup Wifi and MQTT Clients
 // Create an ESP8266 WiFiClient object to connect to the MQTT server.
 WiFiClient client;
@@ -122,7 +125,7 @@ void setup()
 {
   Serial.begin(115200);
   delay(2000);
-  Serial.printf("WiHome Gate Opener v1.0\n===========\nAuthor:\nGernot\nFattinger\n");
+  Serial.printf("WiHome Gate Opener %s (%s)\n===========\nAuthor:\nGernot\nFattinger\n", version, compile_date);
   // Configure buttons:
   button1 = nbb.create(PIN_BUTTON);
   // Load user data (ssid, password, mdsn name, mqtt broker):
@@ -231,6 +234,18 @@ void loop_normal()
           Serial.print(F("Sending max motor current: "));
           Serial.println(go->get_max_imotor());
           stat_imax_feed->publish(int(go->get_max_imotor()));
+        }
+        if (command.compareTo("clearclosed")==0)
+        {
+          Serial.print(F("Clearing closed position."));
+          if (go->valid_closed_position())
+            go->learn_closed_position();
+        }
+        if (command.compareTo("setclosed")==0)
+        {
+          Serial.print(F("Setting closed position."));
+          if (!go->valid_closed_position())
+            go->learn_closed_position();
         }
       }
       else if (subscription == cmd_autoclose_feed)
