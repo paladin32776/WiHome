@@ -9,7 +9,7 @@
 
 // Pin config Gosund wall switch
 #define PIN_LED     5
-#define PIN_LED_ACTIVE_LOW true
+#define PIN_LED_ACTIVE_LOW false
 #define PIN_BUTTON  0
 
 // WiHome GateOpener config

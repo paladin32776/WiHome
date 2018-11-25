@@ -24,7 +24,6 @@ int button1;
 
 // Setup led and relay:
 SignalLED led1(PIN_LED, SLED_BLINK_FAST_1, PIN_LED_ACTIVE_LOW);
-// SignalLED relay1(PIN_RELAY, SLED_OFF, PIN_RELAY_ACTIVE_LOW);
 GateOpenerStateMachine* go;
 int position_percent_last=-1;
 
@@ -36,11 +35,21 @@ EnoughTimePassed etp_Position_Feedback(POSITION_FEEBACK_INTERVALL);
 MQTT_topic* t_stat_relay_feed;
 MQTT_topic* t_cmd_relay_feed;
 MQTT_topic* t_stat_position_feed;
+MQTT_topic* t_stat_autoclose_feed;
+MQTT_topic* t_cmd_autoclose_feed;
+MQTT_topic* t_stat_imax_feed;
+MQTT_topic* t_cmd_imax_feed;
+MQTT_topic* t_stat_imotor_feed;
 
 // Pointers for publishing and subscribe MQTT objects:
 Adafruit_MQTT_Publish* stat_relay_feed;
 Adafruit_MQTT_Subscribe* cmd_relay_feed;
 Adafruit_MQTT_Publish* stat_position_feed;
+Adafruit_MQTT_Publish* stat_autoclose_feed;
+Adafruit_MQTT_Subscribe* cmd_autoclose_feed;
+Adafruit_MQTT_Publish* stat_imax_feed;
+Adafruit_MQTT_Subscribe* cmd_imax_feed;
+Adafruit_MQTT_Publish* stat_imotor_feed;
 
 // Global variable to indicate soft AP mode, wlan and mqtt status, and existence of feeds:
 bool is_softAP = false;
@@ -56,6 +65,11 @@ void MQTT_create_feeds()
     t_stat_relay_feed = new MQTT_topic(ud.mdns_client_name,"/stat/relay");
     t_cmd_relay_feed = new MQTT_topic(ud.mdns_client_name, "/cmd/relay");
     t_stat_position_feed = new MQTT_topic(ud.mdns_client_name,"/stat/position");
+    t_stat_autoclose_feed = new MQTT_topic(ud.mdns_client_name,"/stat/autoclose");
+    t_cmd_autoclose_feed = new MQTT_topic(ud.mdns_client_name,"/cmd/autoclose");
+    t_stat_imax_feed = new MQTT_topic(ud.mdns_client_name,"/stat/imax");
+    t_cmd_imax_feed = new MQTT_topic(ud.mdns_client_name,"/cmd/imax");
+    t_stat_imotor_feed = new MQTT_topic(ud.mdns_client_name,"/stat/imotor");
     // Setup MQTT client:
     // mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
     mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
@@ -63,7 +77,14 @@ void MQTT_create_feeds()
     stat_relay_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_relay_feed->topic);
     cmd_relay_feed = new Adafruit_MQTT_Subscribe(mqtt, t_cmd_relay_feed->topic);
     stat_position_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_position_feed->topic);
+    stat_autoclose_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_autoclose_feed->topic);
+    cmd_autoclose_feed = new Adafruit_MQTT_Subscribe(mqtt, t_cmd_autoclose_feed->topic);
+    stat_imax_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_imax_feed->topic);
+    cmd_imax_feed = new Adafruit_MQTT_Subscribe(mqtt, t_cmd_imax_feed->topic);
+    stat_imotor_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_imotor_feed->topic);
     mqtt->subscribe(cmd_relay_feed);
+    mqtt->subscribe(cmd_autoclose_feed);
+    mqtt->subscribe(cmd_imax_feed);
     mqtt_feeds_exist = true;
   }
 }
@@ -74,13 +95,24 @@ void MQTT_destroy_feeds()
   if (mqtt_feeds_exist)
   {
     mqtt->unsubscribe(cmd_relay_feed);
+    mqtt->unsubscribe(cmd_autoclose_feed);
     delete stat_relay_feed;
     delete cmd_relay_feed;
     delete stat_position_feed;
+    delete stat_autoclose_feed;
+    delete cmd_autoclose_feed;
+    delete stat_imax_feed;
+    delete cmd_imax_feed;
+    delete stat_imotor_feed;
     delete mqtt;
     delete t_stat_relay_feed;
     delete t_cmd_relay_feed;
     delete t_stat_position_feed;
+    delete t_stat_autoclose_feed;
+    delete t_cmd_autoclose_feed;
+    delete t_stat_imax_feed;
+    delete t_cmd_imax_feed;
+    delete t_stat_imotor_feed;
     mqtt_feeds_exist = false;
   }
 }
@@ -100,10 +132,10 @@ void setup()
   MQTT_create_feeds();
   go = new GateOpenerStateMachine(GO_MOT_PIN_A, GO_MOT_PIN_B, GO_POS_PIN, GO_ISENS_PIN, GO_LED_PIN, GO_NVM_OFFSET);
   go->dump_flash(GO_NVM_OFFSET,32);
-  go->set_max_imotor(70);
-  go->dump_flash(GO_NVM_OFFSET,32);
-  go->set_auto_close_time(10000);
-  go->dump_flash(GO_NVM_OFFSET,32);
+  // go->set_max_imotor(70);
+  // go->dump_flash(GO_NVM_OFFSET,32);
+  // go->set_auto_close_time(10);
+  // go->dump_flash(GO_NVM_OFFSET,32);
 }
 
 
@@ -140,9 +172,9 @@ void loop_normal()
         Serial.println(command);
         if (command.compareTo("open")==0)
         {
-            Serial.println(F("open"));
-            // relay1.set(SLED_ON);
-            go->open();
+          Serial.println(F("open"));
+          // relay1.set(SLED_ON);
+          go->open();
         }
         if (command.compareTo("close")==0)
         {
@@ -158,36 +190,64 @@ void loop_normal()
         }
         if (command.compareTo("toggle")==0)
         {
-            Serial.println(F("cycle"));
-            // relay1.invert();
-            go->cycle();
-            bool result=false;
-            if (go->get_state()==1)
-              result = stat_relay_feed->publish("close");
-            else if (go->get_state()==0)
-              result = stat_relay_feed->publish("stop");
-            else if (go->get_state()==0)
-              result = stat_relay_feed->publish("open");
-            if (result)
-              Serial.println(F("Ok!"));
-            else
-              Serial.println(F("Failed."));
+          Serial.println(F("cycle"));
+          // relay1.invert();
+          go->cycle();
+          bool result=false;
+          if (go->get_state()==1)
+            result = stat_relay_feed->publish("close");
+          else if (go->get_state()==0)
+            result = stat_relay_feed->publish("stop");
+          else if (go->get_state()==0)
+            result = stat_relay_feed->publish("open");
+          if (result)
+            Serial.println(F("Ok!"));
+          else
+            Serial.println(F("Failed."));
         }
         if (command.compareTo("status")==0)
         {
-            Serial.println(F("Sending status ..."));
-            bool result=false;
-            if (go->get_state()==1)
-              result = stat_relay_feed->publish("close");
-            else if (go->get_state()==0)
-              result = stat_relay_feed->publish("stop");
-            else if (go->get_state()==-1)
-              result = stat_relay_feed->publish("open");
-            if (result)
-              Serial.println(F("Ok!"));
-            else
-              Serial.println(F("Failed."));
+          Serial.println(F("Sending status ..."));
+          bool result=false;
+          if (go->get_state()==1)
+            result = stat_relay_feed->publish("close");
+          else if (go->get_state()==0)
+            result = stat_relay_feed->publish("stop");
+          else if (go->get_state()==-1)
+            result = stat_relay_feed->publish("open");
+          if (result)
+            Serial.println(F("Ok!"));
+          else
+            Serial.println(F("Failed."));
         }
+        if (command.compareTo("autoclose")==0)
+        {
+          Serial.print(F("Sending autoclose time: "));
+          Serial.println(go->get_auto_close_time());
+          stat_autoclose_feed->publish(int(go->get_auto_close_time()));
+        }
+        if (command.compareTo("imax")==0)
+        {
+          Serial.print(F("Sending max motor current: "));
+          Serial.println(go->get_max_imotor());
+          stat_imax_feed->publish(int(go->get_max_imotor()));
+        }
+      }
+      else if (subscription == cmd_autoclose_feed)
+      {
+        String command = (char*)cmd_autoclose_feed->lastread;
+        Serial.print(F("New autoclose time received: "));
+        Serial.println(command.toInt());
+        go->set_auto_close_time(command.toInt());
+        stat_autoclose_feed->publish(int(go->get_auto_close_time()));
+      }
+      else if (subscription == cmd_imax_feed)
+      {
+        String command = (char*)cmd_imax_feed->lastread;
+        Serial.print(F("New max motor current received: "));
+        Serial.println(command.toInt());
+        go->set_max_imotor(command.toInt());
+        stat_imax_feed->publish(int(go->get_max_imotor()));
       }
     }
   }
@@ -206,7 +266,7 @@ void loop_normal()
     led1.set(SLED_BLINK_FAST_1);
   }
 
-  // LED and RELAY checks:
+  // LED and GO checks:
   led1.check();
   go->check();
   // Check buttons:
@@ -219,6 +279,7 @@ void loop_normal()
       && go->valid_open_position() && go->valid_closed_position() && mqtt_feeds_exist)
   {
     stat_position_feed->publish(go->get_position_percent());
+    stat_imotor_feed->publish(go->get_imotor());
     position_percent_last = go->get_position_percent();
   }
 
