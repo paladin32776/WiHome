@@ -7,8 +7,8 @@
 #include "MQTT_topic.h"
 #include "GateOpenerStateMachine.h"
 
-const char compile_date[] = __DATE__ " " __TIME__;
 const char version[] = "v1.0";
+const char compile_date[] = __DATE__ " " __TIME__ ;
 
 // Setup Wifi and MQTT Clients
 // Create an ESP8266 WiFiClient object to connect to the MQTT server.
@@ -43,6 +43,7 @@ MQTT_topic* t_cmd_autoclose_feed;
 MQTT_topic* t_stat_imax_feed;
 MQTT_topic* t_cmd_imax_feed;
 MQTT_topic* t_stat_imotor_feed;
+MQTT_topic* t_stat_console_feed;
 
 // Pointers for publishing and subscribe MQTT objects:
 Adafruit_MQTT_Publish* stat_relay_feed;
@@ -53,6 +54,7 @@ Adafruit_MQTT_Subscribe* cmd_autoclose_feed;
 Adafruit_MQTT_Publish* stat_imax_feed;
 Adafruit_MQTT_Subscribe* cmd_imax_feed;
 Adafruit_MQTT_Publish* stat_imotor_feed;
+Adafruit_MQTT_Publish* stat_console_feed;
 
 // Global variable to indicate soft AP mode, wlan and mqtt status, and existence of feeds:
 bool is_softAP = false;
@@ -73,6 +75,7 @@ void MQTT_create_feeds()
     t_stat_imax_feed = new MQTT_topic(ud.mdns_client_name,"/stat/imax");
     t_cmd_imax_feed = new MQTT_topic(ud.mdns_client_name,"/cmd/imax");
     t_stat_imotor_feed = new MQTT_topic(ud.mdns_client_name,"/stat/imotor");
+    t_stat_console_feed = new MQTT_topic(ud.mdns_client_name,"/stat/console");
     // Setup MQTT client:
     // mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
     mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
@@ -85,6 +88,7 @@ void MQTT_create_feeds()
     stat_imax_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_imax_feed->topic);
     cmd_imax_feed = new Adafruit_MQTT_Subscribe(mqtt, t_cmd_imax_feed->topic);
     stat_imotor_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_imotor_feed->topic);
+    stat_console_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_console_feed->topic);
     mqtt->subscribe(cmd_relay_feed);
     mqtt->subscribe(cmd_autoclose_feed);
     mqtt->subscribe(cmd_imax_feed);
@@ -107,6 +111,7 @@ void MQTT_destroy_feeds()
     delete stat_imax_feed;
     delete cmd_imax_feed;
     delete stat_imotor_feed;
+    delete stat_console_feed;
     delete mqtt;
     delete t_stat_relay_feed;
     delete t_cmd_relay_feed;
@@ -116,6 +121,7 @@ void MQTT_destroy_feeds()
     delete t_stat_imax_feed;
     delete t_cmd_imax_feed;
     delete t_stat_imotor_feed;
+    delete t_stat_console_feed;
     mqtt_feeds_exist = false;
   }
 }
@@ -246,6 +252,20 @@ void loop_normal()
           Serial.print(F("Setting closed position."));
           if (!go->valid_closed_position())
             go->learn_closed_position();
+        }
+        if (command.compareTo("version")==0)
+        {
+          char buf[60];
+          sprintf(buf,"Version: %s (%s)",version,compile_date);
+          Serial.println(buf);
+          stat_console_feed->publish(buf);
+        }
+        if (command.compareTo("signal")==0)
+        {
+          char buf[20];
+          long rssi = WiFi.RSSI();
+          sprintf(buf,"RSSI = %d dBm",rssi);
+          stat_console_feed->publish(buf);
         }
       }
       else if (subscription == cmd_autoclose_feed)
