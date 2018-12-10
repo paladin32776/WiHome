@@ -34,10 +34,12 @@ EnoughTimePassed etp_MQTT_KeepAlive(MQTT_KEEPALIVE);
 // Pointers to Topics for MQTT publish and subscribe:
 MQTT_topic* t_stat_relay_feed;
 MQTT_topic* t_cmd_relay_feed;
+MQTT_topic* t_stat_console_feed;
 
 // Pointers for publishing and subscribe MQTT objects:
 Adafruit_MQTT_Publish* stat_relay_feed;
 Adafruit_MQTT_Subscribe* cmd_relay_feed;
+Adafruit_MQTT_Publish* stat_console_feed;
 
 // Global variable to indicate soft AP mode, wlan and mqtt status, and existence of feeds:
 bool is_softAP = false;
@@ -52,12 +54,14 @@ void MQTT_create_feeds()
     // Setup MQTT topics for feeds:
     t_stat_relay_feed = new MQTT_topic(ud.mdns_client_name,"/stat/relay");
     t_cmd_relay_feed = new MQTT_topic(ud.mdns_client_name, "/cmd/relay");
+    t_stat_console_feed = new MQTT_topic(ud.mdns_client_name,"/stat/console");
     // Setup MQTT client:
     // mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
     mqtt = new Adafruit_MQTT_Client(&client, ud.mqtt_broker, MQTT_SERVERPORT, MQTT_USERNAME, MQTT_KEY);
     // Setup MQTT subscriptions and publications
     stat_relay_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_relay_feed->topic);
     cmd_relay_feed = new Adafruit_MQTT_Subscribe(mqtt, t_cmd_relay_feed->topic);
+    stat_console_feed = new Adafruit_MQTT_Publish(mqtt, t_stat_console_feed->topic);
     mqtt->subscribe(cmd_relay_feed);
     mqtt_feeds_exist = true;
   }
@@ -71,9 +75,11 @@ void MQTT_destroy_feeds()
     mqtt->unsubscribe(cmd_relay_feed);
     delete stat_relay_feed;
     delete cmd_relay_feed;
+    delete stat_console_feed;
     delete mqtt;
     delete t_stat_relay_feed;
     delete t_cmd_relay_feed;
+    delete t_stat_console_feed;
     mqtt_feeds_exist = false;
   }
 }
