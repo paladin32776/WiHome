@@ -6,6 +6,9 @@
 #include "WiHome_Config.h"
 #include "MQTT_topic.h"
 
+const char version[] = "v1.1";
+const char compile_date[] = __DATE__ " " __TIME__ ;
+
 // Setup Wifi and MQTT Clients
 // Create an ESP8266 WiFiClient object to connect to the MQTT server.
 WiFiClient client;
