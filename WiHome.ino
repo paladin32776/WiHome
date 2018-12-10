@@ -167,6 +167,20 @@ void loop_normal()
             Serial.println(F("Pulsing relay once"));
             relay1.set(SLED_PULSE);
         }
+        if (command.compareTo("version")==0)
+        {
+          char buf[60];
+          sprintf(buf,"Version: %s (%s)",version,compile_date);
+          Serial.println(buf);
+          stat_console_feed->publish(buf);
+        }
+        if (command.compareTo("signal")==0)
+        {
+          char buf[20];
+          long rssi = WiFi.RSSI();
+          sprintf(buf,"RSSI = %d dBm",rssi);
+          stat_console_feed->publish(buf);
+        }
       }
     }
   }
