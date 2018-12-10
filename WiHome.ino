@@ -7,7 +7,7 @@
 #include "MQTT_topic.h"
 #include "GateOpenerStateMachine.h"
 
-const char version[] = "v1.0";
+const char version[] = "v1.1";
 const char compile_date[] = __DATE__ " " __TIME__ ;
 
 // Setup Wifi and MQTT Clients
@@ -228,6 +228,7 @@ void loop_normal()
             Serial.println(F("Ok!"));
           else
             Serial.println(F("Failed."));
+          stat_position_feed->publish(go->get_position_percent());
         }
         if (command.compareTo("autoclose")==0)
         {
