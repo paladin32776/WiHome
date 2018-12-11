@@ -127,6 +127,22 @@ void MQTT_destroy_feeds()
 }
 
 
+void publish_state()
+{
+  bool result=false;
+  if (go->get_state()==1)
+    result = stat_relay_feed->publish("close");
+  else if (go->get_state()==0)
+    result = stat_relay_feed->publish("stop");
+  else if (go->get_state()==-1)
+    result = stat_relay_feed->publish("open");
+  if (result)
+    Serial.println(F("Ok!"));
+  else
+    Serial.println(F("Failed."));
+}
+
+
 void setup()
 {
   Serial.begin(115200);
@@ -202,32 +218,12 @@ void loop_normal()
           Serial.println(F("cycle"));
           // relay1.invert();
           go->cycle();
-          bool result=false;
-          if (go->get_state()==1)
-            result = stat_relay_feed->publish("close");
-          else if (go->get_state()==0)
-            result = stat_relay_feed->publish("stop");
-          else if (go->get_state()==0)
-            result = stat_relay_feed->publish("open");
-          if (result)
-            Serial.println(F("Ok!"));
-          else
-            Serial.println(F("Failed."));
+          publish_state();
         }
         if (command.compareTo("status")==0)
         {
           Serial.println(F("Sending status ..."));
-          bool result=false;
-          if (go->get_state()==1)
-            result = stat_relay_feed->publish("close");
-          else if (go->get_state()==0)
-            result = stat_relay_feed->publish("stop");
-          else if (go->get_state()==-1)
-            result = stat_relay_feed->publish("open");
-          if (result)
-            Serial.println(F("Ok!"));
-          else
-            Serial.println(F("Failed."));
+          publish_state();
           stat_position_feed->publish(go->get_position_percent());
         }
         if (command.compareTo("autoclose")==0)
@@ -326,19 +322,7 @@ void loop_normal()
     go->cycle();
     Serial.printf("state = %d ",go->get_state());
     if (mqtt_feeds_exist)
-    {
-      bool result=false;
-      if (go->get_state()==1)
-        result = stat_relay_feed->publish("closing");
-      else if (go->get_state()==0)
-        result = stat_relay_feed->publish("stopped");
-      else if (go->get_state()==-1)
-        result = stat_relay_feed->publish("opening");
-      if (result)
-        Serial.println(F("Ok!"));
-      else
-        Serial.println(F("Failed."));
-    }
+      publish_state();
     nbb.reset(button1);
   }
   if ((nbb.action(button1)==2) && (go->get_state()==0))
