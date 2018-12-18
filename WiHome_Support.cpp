@@ -4,6 +4,7 @@ bool needMDNS=true;
 bool needDNSandCWS=true;
 EnoughTimePassed etp_Wifi(10000);
 EnoughTimePassed etp_MQTT_retry(5000);
+int MQTT_connect_count=0;
 
 // Web server:
 ConfigWebServer* cws;
@@ -63,16 +64,20 @@ bool MQTT_connect(Adafruit_MQTT_Client* mqtt)
   // If not connected and enough time has passed since last reconnection attempt
   if (etp_MQTT_retry.enough_time())
   {
-    Serial.print("Connecting to MQTT... ");
+    Serial.printf("Connecting to MQTT (attempt %d)... ", MQTT_connect_count);
     if ((ret = mqtt->connect()) != 0) // connect will return 0 for connected
     {
       Serial.println(mqtt->connectErrorString(ret));
       mqtt->disconnect();
+      MQTT_connect_count++;
+      if (MQTT_connect_count==MAX_MQTT_CONNECT_COUNT)
+        ESP.restart();
       return false;
     }
     else
     {
       Serial.println("MQTT Connected!");
+      MQTT_connect_count=0;
       return true;
     }
   }
