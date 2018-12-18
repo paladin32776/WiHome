@@ -129,17 +129,9 @@ void MQTT_destroy_feeds()
 
 void publish_state()
 {
-  bool result=false;
-  if (go->get_state()==1)
-    result = stat_relay_feed->publish("close");
-  else if (go->get_state()==0)
-    result = stat_relay_feed->publish("stop");
-  else if (go->get_state()==-1)
-    result = stat_relay_feed->publish("open");
-  if (result)
-    Serial.println(F("Ok!"));
-  else
-    Serial.println(F("Failed."));
+  char msg[64];
+  sprintf(msg,"{\"state\":%d,\"position\":%d,\"imotor\":%d}",go->get_state(),go->get_position_percent(),go->get_imotor());
+  stat_relay_feed->publish(msg);
 }
 
 
@@ -198,25 +190,24 @@ void loop_normal()
         if (command.compareTo("open")==0)
         {
           Serial.println(F("open"));
-          // relay1.set(SLED_ON);
           go->open();
+          publish_state();
         }
         if (command.compareTo("close")==0)
         {
             Serial.println(F("close"));
-            // relay1.set(SLED_OFF);
             go->close();
+            publish_state();
         }
         if (command.compareTo("stop")==0)
         {
             Serial.println(F("stop"));
-            // relay1.set(SLED_OFF);
             go->stop();
+            publish_state();
         }
         if (command.compareTo("toggle")==0)
         {
           Serial.println(F("cycle"));
-          // relay1.invert();
           go->cycle();
           publish_state();
         }
@@ -310,6 +301,7 @@ void loop_normal()
   if (etp_Position_Feedback.enough_time() && go->get_position_percent()!=position_percent_last
       && go->valid_open_position() && go->valid_closed_position() && mqtt_feeds_exist)
   {
+    publish_state();
     stat_position_feed->publish(go->get_position_percent());
     stat_imotor_feed->publish(go->get_imotor());
     position_percent_last = go->get_position_percent();
