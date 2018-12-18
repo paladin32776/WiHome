@@ -13,6 +13,7 @@
 #define MQTT_USERNAME    ""
 #define MQTT_KEY         ""
 #define MQTT_KEEPALIVE   300000
+#define MAX_MQTT_CONNECT_COUNT 10
 
 // Pin configurations SparkFun Dev Thing:
 // #define PIN_LED     5
