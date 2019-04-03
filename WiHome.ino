@@ -4,6 +4,7 @@
 #include "WiHome_Config.h"
 
 WiHomeComm whc;
+
 SignalLED led(PIN_LED,SLED_BLINK_FAST_1,PIN_LED_ACTIVE_LOW);
 SignalLED relay(PIN_RELAY,SLED_OFF,PIN_RELAY_ACTIVE_LOW);
 NoBounceButtons nbb;
@@ -11,7 +12,10 @@ char button;
 
 void setup()
 {
-  Serial.begin(115200);
+  if (SERIAL_DEBUG)
+    Serial.begin(115200);
+  else
+    Serial.end();
   Serial.println();
   delay(100);
   button = nbb.create(PIN_BUTTON);
@@ -62,10 +66,15 @@ void loop()
   }
   if (nbb.action(button)==1)
   {
-    Serial.printf("Button1 pressed (action=1).\n");
-    relay.invert();
-    Serial.printf("LED is now %d.\n",relay.get());
-    report_relay_status();
+    if (whc.softAPmode==true)
+      whc.softAPmode=false;
+    else
+    {
+      Serial.printf("Button1 pressed (action=1).\n");
+      relay.invert();
+      Serial.printf("LED is now %d.\n",relay.get());
+      report_relay_status();
+    }
     nbb.reset(button);
   }
 
