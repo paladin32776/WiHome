@@ -305,6 +305,7 @@ void loop_normal()
     stat_position_feed->publish(go->get_position_percent());
     stat_imotor_feed->publish(go->get_imotor());
     position_percent_last = go->get_position_percent();
+    telnetprint("AAA",3);
   }
 
   // Publish if required:

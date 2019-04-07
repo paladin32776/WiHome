@@ -9,6 +9,49 @@ int MQTT_connect_count=0;
 // Web server:
 ConfigWebServer* cws;
 
+// Telnet server
+WiFiServer telnetserver(23);
+WiFiClient telnetserverClients[MAX_SRV_CLIENTS];
+
+void telnethandle()
+{
+  uint8_t i;
+  //check if there are any new clients
+  if (telnetserver.hasClient())
+  {
+    for(i = 0; i < MAX_SRV_CLIENTS; i++)
+    {
+      //find free/disconnected spot
+      if (!telnetserverClients[i] || !telnetserverClients[i].connected())
+      {
+        if(telnetserverClients[i])
+          telnetserverClients[i].stop();
+        telnetserverClients[i] = telnetserver.available();
+        break;
+      }
+    }
+    //no free/disconnected spot so reject
+    if ( i == MAX_SRV_CLIENTS)
+    {
+       WiFiClient serverClient = telnetserver.available();
+       serverClient.stop();
+    }
+  }
+}
+
+void telnetprint(char* sbuf, int len)
+{
+  uint8_t i;
+  for(i = 0; i < MAX_SRV_CLIENTS; i++)
+  {
+      if (telnetserverClients[i] && telnetserverClients[i].connected())
+      {
+        telnetserverClients[i].write(sbuf, len);
+        delay(1);
+      }
+    }
+}
+
 bool ConnectStation(char* ssid, char* passwd, char* mdns_client_name)
 {
   if (WiFi.status()!=WL_CONNECTED || WiFi.getMode()!=WIFI_STA)
@@ -40,11 +83,14 @@ bool ConnectStation(char* ssid, char* passwd, char* mdns_client_name)
       ArduinoOTA.setPort(8266);
       ArduinoOTA.setHostname(mdns_client_name);
       ArduinoOTA.begin();
+      telnetserver.begin();
+      telnetserver.setNoDelay(true);
     }
   }
   if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA && !needMDNS)
   {
     ArduinoOTA.handle();
+    telnethandle();
     return true;
   }
   return false;
