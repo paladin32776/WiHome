@@ -20,7 +20,7 @@
 #define MAX_SRV_CLIENTS 1
 
 void telnethandle();
-void telnetprint(char* sbuf, int len);
+void tprintf(char *fmt, ...);
 
 // Function to connect to WiFi and mDNS
 bool ConnectStation(char* ssid, char* passwd, char* mdns_client_name);

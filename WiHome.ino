@@ -132,6 +132,7 @@ void publish_state()
   char msg[64];
   sprintf(msg,"{\"state\":%d,\"position\":%d,\"imotor\":%d}",go->get_state(),go->get_position_percent(),go->get_imotor());
   stat_relay_feed->publish(msg);
+  tprintf("%s\n",msg);
 }
 
 
@@ -190,30 +191,35 @@ void loop_normal()
         if (command.compareTo("open")==0)
         {
           Serial.println(F("open"));
+          tprintf("open\n");
           go->open();
           publish_state();
         }
         if (command.compareTo("close")==0)
         {
             Serial.println(F("close"));
+            tprintf("close\n");
             go->close();
             publish_state();
         }
         if (command.compareTo("stop")==0)
         {
             Serial.println(F("stop"));
+            tprintf("stop\n");
             go->stop();
             publish_state();
         }
         if (command.compareTo("toggle")==0)
         {
           Serial.println(F("cycle"));
+          tprintf("cycle\n");
           go->cycle();
           publish_state();
         }
         if (command.compareTo("status")==0)
         {
           Serial.println(F("Sending status ..."));
+          tprintf("status\n");
           publish_state();
           stat_position_feed->publish(go->get_position_percent());
         }
@@ -221,12 +227,14 @@ void loop_normal()
         {
           Serial.print(F("Sending autoclose time: "));
           Serial.println(go->get_auto_close_time());
+          tprintf("Autoclose time: %d\n",go->get_auto_close_time());
           stat_autoclose_feed->publish(int(go->get_auto_close_time()));
         }
         if (command.compareTo("imax")==0)
         {
           Serial.print(F("Sending max motor current: "));
           Serial.println(go->get_max_imotor());
+          tprintf("Max motor current: %d\n",go->get_max_imotor());
           stat_imax_feed->publish(int(go->get_max_imotor()));
         }
         if (command.compareTo("clearclosed")==0)
@@ -305,7 +313,6 @@ void loop_normal()
     stat_position_feed->publish(go->get_position_percent());
     stat_imotor_feed->publish(go->get_imotor());
     position_percent_last = go->get_position_percent();
-    telnetprint("AAA",3);
   }
 
   // Publish if required:

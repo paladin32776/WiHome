@@ -10,45 +10,53 @@ int MQTT_connect_count=0;
 ConfigWebServer* cws;
 
 // Telnet server
-WiFiServer telnetserver(23);
-WiFiClient telnetserverClients[MAX_SRV_CLIENTS];
+WiFiServer* telnetServer;
+WiFiClient telnetClient;
+bool telnetactive = false;
 
 void telnethandle()
 {
-  uint8_t i;
-  //check if there are any new clients
-  if (telnetserver.hasClient())
+  if ((WiFi.status() == WL_CONNECTED) && (telnetactive==false))
   {
-    for(i = 0; i < MAX_SRV_CLIENTS; i++)
+    telnetServer = new WiFiServer(23);
+    telnetServer->begin();
+    telnetServer->setNoDelay(true);
+    telnetactive = true;
+    Serial.printf("Telnet ready.\n");
+  }
+  else if ((WiFi.status() != WL_CONNECTED) && (telnetactive==true))
+  {
+    telnetServer->stop();
+    delete telnetServer;
+    telnetactive = false;
+    Serial.printf("Telnet stopped.\n");
+  }
+  if (telnetactive)
+  {
+    if (telnetServer->hasClient())
     {
-      //find free/disconnected spot
-      if (!telnetserverClients[i] || !telnetserverClients[i].connected())
+      if (!telnetClient)
       {
-        if(telnetserverClients[i])
-          telnetserverClients[i].stop();
-        telnetserverClients[i] = telnetserver.available();
-        break;
+        telnetClient = telnetServer->available();
+        delay(5);
+        while (telnetClient.available()>0)
+          telnetClient.read();
+        tprintf("Debug via telnet:\n\n");
       }
-    }
-    //no free/disconnected spot so reject
-    if ( i == MAX_SRV_CLIENTS)
-    {
-       WiFiClient serverClient = telnetserver.available();
-       serverClient.stop();
     }
   }
 }
 
-void telnetprint(char* sbuf, int len)
+void tprintf(char *fmt, ...)
 {
-  uint8_t i;
-  for(i = 0; i < MAX_SRV_CLIENTS; i++)
-  {
-      if (telnetserverClients[i] && telnetserverClients[i].connected())
-      {
-        telnetserverClients[i].write(sbuf, len);
-        delay(1);
-      }
+    if (telnetactive && telnetClient)
+    {
+      char buf[100];
+      va_list va;
+      va_start (va, fmt);
+      vsprintf (buf, fmt, va);
+      telnetClient.print(buf);
+      va_end (va);
     }
 }
 
@@ -83,8 +91,6 @@ bool ConnectStation(char* ssid, char* passwd, char* mdns_client_name)
       ArduinoOTA.setPort(8266);
       ArduinoOTA.setHostname(mdns_client_name);
       ArduinoOTA.begin();
-      telnetserver.begin();
-      telnetserver.setNoDelay(true);
     }
   }
   if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA && !needMDNS)
