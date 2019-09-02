@@ -25,12 +25,7 @@ void setup()
 void report_relay_status()
 {
   Serial.printf("Reporting relay status (now %d).\n",relay.get());
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject& root = jsonBuffer.createObject();
-  root["cmd"]="info";
-  root["parameter"]="relay";
-  root["value"]=relay.get();
-  whc.send(root);
+  whc.sendJSON("cmd", "info", "parameter", "relay", "value", relay.get());
 }
 
 
@@ -94,11 +89,7 @@ void loop()
       if (root["parameter"]=="relay")
         report_relay_status();
       else if (root["parameter"]=="signal")
-      {
-        root["cmd"] = "info";
-        root["value"] = WiFi.RSSI();
-        whc.send(root);
-      }
+        whc.sendJSON("cmd", "info", "value", WiFi.RSSI());
     }
   }
 
