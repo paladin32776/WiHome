@@ -35,3 +35,10 @@
 #define PIN_RELAY   12
 #define PIN_LED_ACTIVE_LOW true
 #define PIN_RELAY_ACTIVE_LOW false
+
+// // Pin config Sonoff POW Ver 2.0
+// #define PIN_LED     15
+// #define PIN_BUTTON  0
+// #define PIN_RELAY   12
+// #define PIN_LED_ACTIVE_LOW false
+// #define PIN_RELAY_ACTIVE_LOW false
