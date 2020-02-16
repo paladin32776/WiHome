@@ -5,10 +5,10 @@
 
 WiHomeComm whc;
 
-SignalLED led(PIN_LED,SLED_BLINK_FAST_1,PIN_LED_ACTIVE_LOW);
-SignalLED relay(PIN_RELAY,SLED_OFF,PIN_RELAY_ACTIVE_LOW);
+SignalLED* led[N_LEDS];
+SignalLED* relay[N_RELAYS];
 NoBounceButtons nbb;
-char button;
+char button[N_BUTTONS];
 
 void setup()
 {
@@ -18,14 +18,24 @@ void setup()
     Serial.end();
   Serial.println();
   delay(100);
-  button = nbb.create(PIN_BUTTON);
+  for (int n=0; n<N_BUTTONS; n++)
+    button[n] = nbb.create(BUTTON_PIN[n]);
+  for (int n=0; n<N_LEDS; n++)
+    led[n] = new SignalLED(LED_PIN[n],LED_INIT[n],LED_ACTIVE_LOW[n]);
+  for (int n=0; n<N_RELAYS; n++)
+    relay[n] = new SignalLED(RELAY_PIN[n],RELAY_INIT[n],RELAY_ACTIVE_LOW[n]);
+  // Setup which led to display Wifi status:
+  if (LED_RELAY[WIFI_LED]>=0 && LED_RELAY[WIFI_LED]<N_RELAYS)
+    whc.set_status_led(led[WIFI_LED], relay[LED_RELAY[WIFI_LED]]);
+  else
+    whc.set_status_led(led[WIFI_LED]);
 }
 
 
-void report_relay_status()
+void report_relay_status(int n)
 {
-  Serial.printf("Reporting relay status (now %d).\n",relay.get());
-  whc.sendJSON("cmd", "info", "parameter", "relay", "value", relay.get());
+    Serial.printf("Reporting relay channel %d status: %d\n", n, relay[n]->get());
+    whc.sendJSON("cmd", "info", "parameter", "relay", "value", relay[n]->get(), "channel", n);
 }
 
 
@@ -36,61 +46,62 @@ void loop()
   // Handling routines for various libraries used:
   JsonObject& root = whc.check(&jsonBuffer);
   nbb.check();
-  led.check();
-  relay.check();
-
-  // Logic for LED status display:
-  if (whc.status()==1)
-    led.set(relay.get());
-  else if (whc.status()==2)
-    led.set(SLED_BLINK_FAST_3);
-  else if (whc.status()==3)
-    led.set(SLED_BLINK_FAST_1);
-  else if (whc.status()==4)
-    led.set(SLED_BLINK_SLOW);
-  else
-    led.set(SLED_BLINK_FAST);
+  for (int n=0; n<N_LEDS; n++)
+    led[n]->check();
+  for (int n=0; n<N_RELAYS; n++)
+    relay[n]->check();
 
   // React to button actions:
-  if (nbb.action(button)==2)
+  for (int n=0; n<N_BUTTONS; n++)
   {
-    Serial.printf("Button1 pressed (action=2).\n");
-    Serial.printf("Attempting to go to SoftAP mode.\n");
-    whc.softAPmode=true;
-    nbb.reset(button);
-  }
-  if (nbb.action(button)==1)
-  {
-    if (whc.softAPmode==true)
-      whc.softAPmode=false;
-    else
+    if (nbb.action(button[n])==NBB_LONG_CLICK)
     {
-      Serial.printf("Button1 pressed (action=1).\n");
-      relay.invert();
-      Serial.printf("LED is now %d.\n",relay.get());
-      report_relay_status();
+      Serial.printf("Button %d long click.\n",n);
+      Serial.printf("Attempting to go to SoftAP mode.\n");
+      whc.softAPmode=true;
+      nbb.reset(button[n]);
     }
-    nbb.reset(button);
+    if (nbb.action(button[n])==NBB_CLICK)
+    {
+      if (whc.softAPmode==true)
+        whc.softAPmode=false;
+      else
+      {
+        Serial.printf("Button %d click.\n",n);
+        if (BUTTON_RELAY[n]>=0)
+          relay[BUTTON_RELAY[n]]->invert();
+        report_relay_status(BUTTON_RELAY[n]);
+      }
+      nbb.reset(button[n]);
+    }
   }
 
   // React to received JSON command objects:
   if (root!=JsonObject::invalid())
   {
+    int n=0;
+    if (root.containsKey("channel"))
+      n = root["channel"];
     if (root["cmd"]=="set")
     {
-      if (root["parameter"]=="relay")
+      if (root["parameter"]=="relay" && n<N_RELAYS)
       {
-        relay.set((int)root["value"]);
-        report_relay_status();
+        relay[n]->set((int)root["value"]);
+        report_relay_status(n);
       }
     }
     else if (root["cmd"]=="get")
     {
-      if (root["parameter"]=="relay")
-        report_relay_status();
+      if (root["parameter"]=="relay" && n<N_RELAYS)
+        report_relay_status(n);
       else if (root["parameter"]=="signal")
         whc.sendJSON("cmd", "info", "value", WiFi.RSSI());
     }
   }
+
+  // Sync LEDs with relays per config:
+  for (int n=0; n<N_LEDS; n++)
+    if (n!=WIFI_LED && LED_RELAY[n]>=0 && LED_RELAY[n]<N_RELAYS)
+      led[n]->set(relay[LED_RELAY[n]]->get());
 
 }

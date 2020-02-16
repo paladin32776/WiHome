@@ -1,4 +1,4 @@
-#define SERIAL_DEBUG false
+#define SERIAL_DEBUG true
 
 // // Pin config Gosund wall switch V1
 // #define PIN_LED     13
@@ -29,12 +29,12 @@
 // #define PIN_LED_ACTIVE_LOW true
 // #define PIN_RELAY_ACTIVE_LOW false
 
-// Pin config Sonoff Basic R2 V1.0 (2017-10-11)
-#define PIN_LED     13
-#define PIN_BUTTON  0
-#define PIN_RELAY   12
-#define PIN_LED_ACTIVE_LOW true
-#define PIN_RELAY_ACTIVE_LOW false
+// // Pin config Sonoff Basic R2 V1.0 (2017-10-11)
+// #define PIN_LED     13
+// #define PIN_BUTTON  0
+// #define PIN_RELAY   12
+// #define PIN_LED_ACTIVE_LOW true
+// #define PIN_RELAY_ACTIVE_LOW false
 
 // // Pin config Sonoff POW Ver 2.0
 // #define PIN_LED     15
@@ -42,3 +42,18 @@
 // #define PIN_RELAY   12
 // #define PIN_LED_ACTIVE_LOW false
 // #define PIN_RELAY_ACTIVE_LOW false
+
+// Test
+#define WIFI_LED 0
+#define N_LEDS      2
+const unsigned int LED_PIN[] = {13,16};
+const unsigned int LED_INIT[] = {SLED_OFF,SLED_OFF};
+const unsigned int LED_ACTIVE_LOW[] = {false,false};
+const unsigned int LED_RELAY[] = {1,0}; // Use -1 if no relay status should be displayed
+#define N_BUTTONS   2
+const unsigned int BUTTON_PIN[] = {0,2};
+const unsigned int BUTTON_RELAY[] = {0,1}; // Use -1 if no relay should be impacted by action=1
+#define N_RELAYS    2
+const unsigned int RELAY_PIN[] = {12,14};
+const unsigned int RELAY_INIT[] = {SLED_OFF,SLED_OFF};
+const unsigned int RELAY_ACTIVE_LOW[] = {false, false};
