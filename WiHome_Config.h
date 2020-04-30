@@ -15,6 +15,21 @@
 // #define PIN_LED_ACTIVE_LOW true
 // #define PIN_RELAY_ACTIVE_LOW false
 
+// Pin config Gosund wall switch SW1_V1.2
+#define WIFI_LED 1
+#define N_LEDS      2
+const unsigned int LED_PIN[] = {1,16};  // 1 = GREEN (also U0TXD), 16 = RED
+const unsigned int LED_INIT[] = {SLED_OFF,SLED_OFF};
+const unsigned int LED_ACTIVE_LOW[] = {true,true};
+const unsigned int LED_RELAY[] = {0,-1}; // Use -1 if no relay status should be displayed
+#define N_BUTTONS   1
+const unsigned int BUTTON_PIN[] = {0};
+const unsigned int BUTTON_RELAY[] = {0}; // Use -1 if no relay should be impacted by action=1
+#define N_RELAYS    1
+const unsigned int RELAY_PIN[] = {14};
+const unsigned int RELAY_INIT[] = {SLED_OFF};
+const unsigned int RELAY_ACTIVE_LOW[] = {false};
+
 // // Pin config Sonoff Basic RF R2 POWER V1.0
 // #define PIN_LED     13
 // #define PIN_BUTTON  0
@@ -43,17 +58,17 @@
 // #define PIN_LED_ACTIVE_LOW false
 // #define PIN_RELAY_ACTIVE_LOW false
 
-// Test
-#define WIFI_LED 0
-#define N_LEDS      2
-const unsigned int LED_PIN[] = {13,16};
-const unsigned int LED_INIT[] = {SLED_OFF,SLED_OFF};
-const unsigned int LED_ACTIVE_LOW[] = {false,false};
-const unsigned int LED_RELAY[] = {1,0}; // Use -1 if no relay status should be displayed
-#define N_BUTTONS   2
-const unsigned int BUTTON_PIN[] = {0,2};
-const unsigned int BUTTON_RELAY[] = {0,1}; // Use -1 if no relay should be impacted by action=1
-#define N_RELAYS    2
-const unsigned int RELAY_PIN[] = {12,14};
-const unsigned int RELAY_INIT[] = {SLED_OFF,SLED_OFF};
-const unsigned int RELAY_ACTIVE_LOW[] = {false, false};
+// // Test
+// #define WIFI_LED 0
+// #define N_LEDS      2
+// const unsigned int LED_PIN[] = {13,16};
+// const unsigned int LED_INIT[] = {SLED_OFF,SLED_OFF};
+// const unsigned int LED_ACTIVE_LOW[] = {false,false};
+// const unsigned int LED_RELAY[] = {1,0}; // Use -1 if no relay status should be displayed
+// #define N_BUTTONS   2
+// const unsigned int BUTTON_PIN[] = {0,2};
+// const unsigned int BUTTON_RELAY[] = {0,1}; // Use -1 if no relay should be impacted by action=1
+// #define N_RELAYS    2
+// const unsigned int RELAY_PIN[] = {12,14};
+// const unsigned int RELAY_INIT[] = {SLED_OFF,SLED_OFF};
+// const unsigned int RELAY_ACTIVE_LOW[] = {false, false};
