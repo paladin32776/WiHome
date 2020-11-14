@@ -32,10 +32,9 @@ void setup()
 
 void loop()
 {
-  DynamicJsonBuffer jsonBuffer;
-
+  DynamicJsonDocument doc(1024);
   // Handling routines for various libraries used:
-  JsonObject& root = whc.check(&jsonBuffer);
+  whc.check(doc);
   nbb.check();
   for (int n=0; n<N_LEDS; n++)
     led[n]->check();
@@ -70,39 +69,39 @@ void loop()
   }
 
   // React to received JSON command objects:
-  if (root!=JsonObject::invalid())
+  if (~doc.isNull())
   {
     int n=0;
-    if (root.containsKey("channel"))
-      n = root["channel"];
-    if (root["cmd"]=="set")
+    if (doc.containsKey("channel"))
+      n = doc["channel"];
+    if (doc["cmd"]=="set")
     {
-      if (root["parameter"]=="on" && n<N_RGBSTRIPS)
+      if (doc["parameter"]=="on" && n<N_RGBSTRIPS)
       {
-        rgbstrip[n]->set_on((int)root["value"]);
+        rgbstrip[n]->set_on((int)doc["value"]);
         whc.sendJSON("cmd", "info", "parameter", "on", "value", rgbstrip[n]->get_on(), "channel", n);
       }
-      if (root["parameter"]=="hue" && n<N_RGBSTRIPS)
+      if (doc["parameter"]=="hue" && n<N_RGBSTRIPS)
       {
-        rgbstrip[n]->set_hue((int)root["value"]);
+        rgbstrip[n]->set_hue((int)doc["value"]);
         whc.sendJSON("cmd", "info", "parameter", "hue", "value", rgbstrip[n]->get_hue(), "channel", n);
       }
-      if (root["parameter"]=="saturation" && n<N_RGBSTRIPS)
+      if (doc["parameter"]=="saturation" && n<N_RGBSTRIPS)
       {
-        rgbstrip[n]->set_saturation((int)root["value"]);
+        rgbstrip[n]->set_saturation((int)doc["value"]);
         whc.sendJSON("cmd", "info", "parameter", "saturation", "value", rgbstrip[n]->get_saturation(), "channel", n);
       }
-      if (root["parameter"]=="brightness" && n<N_RGBSTRIPS)
+      if (doc["parameter"]=="brightness" && n<N_RGBSTRIPS)
       {
-        rgbstrip[n]->set_brightness((int)root["value"]);
+        rgbstrip[n]->set_brightness((int)doc["value"]);
         whc.sendJSON("cmd", "info", "parameter", "brightness", "value", rgbstrip[n]->get_brightness(), "channel", n);
       }
     }
-    else if (root["cmd"]=="get")
+    else if (doc["cmd"]=="get")
     {
-      if (root["parameter"]=="on" && n<N_RGBSTRIPS)
+      if (doc["parameter"]=="on" && n<N_RGBSTRIPS)
         whc.sendJSON("cmd", "info", "parameter", "on", "value", rgbstrip[n]->get_on(), "channel", n);
-      else if (root["parameter"]=="signal")
+      else if (doc["parameter"]=="signal")
         whc.sendJSON("cmd", "info", "value", WiFi.RSSI());
     }
   }
