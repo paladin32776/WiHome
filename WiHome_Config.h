@@ -106,13 +106,13 @@
 // Pin config Sparkfun Thing Dev Board RGBstrip
 #define WIFI_LED 0
 #define N_LEDS      1
-const unsigned int LED_PIN[] = {5};   // 5 is on-board LED
+const unsigned int LED_PIN[] = {15};   // 5 is on-board LED
 const unsigned int LED_INIT[] = {SLED_OFF};
-const unsigned int LED_ACTIVE_LOW[] = {true};
+const unsigned int LED_ACTIVE_LOW[] = {false};
 const unsigned int LED_RGBSTRIP[] = {0}; // Use -1 if no rgbstrip status should be displayed
-#define N_BUTTONS   2
-const unsigned int BUTTON_PIN[] = {0,2};
-const unsigned int BUTTON_RGBSTRIP[] = {0,1}; // Use -1 if no rgbstrip should be impacted by action=1
+#define N_BUTTONS   1
+const unsigned int BUTTON_PIN[] = {0};
+const unsigned int BUTTON_RGBSTRIP[] = {0}; // Use -1 if no rgbstrip should be impacted by action=1
 #define N_RGBSTRIPS    1
-const unsigned int RGBSTRIP_PIN[N_RGBSTRIPS][3] = {{12,4,13}};
+const unsigned int RGBSTRIP_PIN[N_RGBSTRIPS][3] = {{13,4,12}};
 const unsigned int RGBSTRIP_ACTIVE_LOW[] = {false};

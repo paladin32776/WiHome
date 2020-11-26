@@ -26,7 +26,7 @@ void setup()
   for (int n=0; n<N_RGBSTRIPS; n++)
     rgbstrip[n] = new RGBstrip(RGBSTRIP_PIN[n][0],RGBSTRIP_PIN[n][1],RGBSTRIP_PIN[n][2],RGBSTRIP_ACTIVE_LOW[n]);
   // Setup led to display Wifi status:
-  whc.set_status_led(led[WIFI_LED]);
+    whc.set_status_led(led[WIFI_LED], rgbstrip[LED_RGBSTRIP[WIFI_LED]]);
 }
 
 
